@@ -320,7 +320,9 @@ export async function ownerRoutes(app: FastifyInstance) {
       const s = search.toLowerCase();
       customers = customers.filter((c) => c.name.toLowerCase().includes(s) || c.phone.includes(s));
     }
-    customers.sort((a, b) => b.spentPaise - a.spentPaise);
+    // Most recently active first (so a customer who just booked shows at the
+    // top), with total spent as the tie-breaker.
+    customers.sort((a, b) => b.lastVisit.localeCompare(a.lastVisit) || b.spentPaise - a.spentPaise);
     return { customers };
   });
 
