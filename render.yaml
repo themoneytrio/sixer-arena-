@@ -17,7 +17,7 @@ services:
     runtime: node
     plan: free
     rootDir: .
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @sixer/backend exec prisma generate && pnpm --filter @sixer/backend exec prisma migrate deploy
+    buildCommand: npm install -g corepack@latest && corepack enable && pnpm install --frozen-lockfile && pnpm --filter @sixer/backend exec prisma generate && pnpm --filter @sixer/backend exec prisma migrate deploy
     startCommand: pnpm --filter @sixer/backend start
     healthCheckPath: /health
     envVars:
@@ -48,7 +48,7 @@ services:
     name: sixer-consumer
     runtime: static
     rootDir: .
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @sixer/consumer build
+    buildCommand: npm install -g corepack@latest && corepack enable && pnpm install --frozen-lockfile && pnpm --filter @sixer/consumer build
     staticPublishPath: apps/consumer/dist
     envVars:
       - key: NODE_VERSION
@@ -74,7 +74,7 @@ services:
     name: sixer-owner
     runtime: static
     rootDir: .
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @sixer/owner build
+    buildCommand: npm install -g corepack@latest && corepack enable && pnpm install --frozen-lockfile && pnpm --filter @sixer/owner build
     staticPublishPath: apps/owner/dist
     envVars:
       - key: NODE_VERSION
