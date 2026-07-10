@@ -1,0 +1,250 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  MANAGER
+}
+
+enum BookingSource {
+  ONLINE
+  WALKIN
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum HoldStatus {
+  HELD // transient reservation during checkout
+  BOOKED // confirmed booking / paid walk-in
+  BLOCKED // owner block (rain / maintenance / tournament)
+}
+
+enum SlotState {
+  ACTIVE
+  CANCELLED
+}
+
+enum PaymentProvider {
+  RAZORPAY
+  MOCK
+}
+
+enum PaymentStatus {
+  CREATED
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id          String            @id @default(cuid())
+  phone       String?           @unique
+  email       String?           @unique
+  name        String?
+  createdAt   DateTime          @default(now())
+  memberships VenueMembership[]
+  bookings    Booking[]
+  tokens      RefreshToken[]
+}
+
+// Authorization is a membership row, not a role column on User — every human
+// (customer or owner) authenticates through the same OTP flow. Supports one
+// owner running several venues, and future staff logins, with no migration.
+model VenueMembership {
+  id      String @id @default(cuid())
+  userId  String
+  venueId String
+  role    Role   @default(OWNER)
+  user    User   @relation(fields: [userId], references: [id])
+  venue   Venue  @relation(fields: [venueId], references: [id])
+
+  @@unique([userId, venueId])
+}
+
+model Venue {
+  id                       String            @id @default(cuid())
+  name                     String
+  locality                 String
+  timezone                 String            @default("Asia/Kolkata")
+  depositPercent           Int               @default(40)
+  convenienceFeePaise      Int               @default(3000)
+  cancellationFreeHours    Int               @default(6)
+  cancellationRefundPercent Int              @default(50)
+  createdAt                DateTime          @default(now())
+  sports                   Sport[]
+  turfs                    Turf[]
+  bookings                 Booking[]
+  memberships              VenueMembership[]
+  coupons                  Coupon[]
+}
+
+model Coupon {
+  id               String    @id @default(cuid())
+  venueId          String
+  code             String // stored upper-cased
+  percentOff       Int
+  maxDiscountPaise Int? // cap on the rupee value of the discount
+  minSubtotalPaise Int       @default(0)
+  usageCap         Int? // null = unlimited
+  usedCount        Int       @default(0)
+  active           Boolean   @default(true)
+  validUntil       DateTime?
+  createdAt        DateTime  @default(now())
+  venue            Venue     @relation(fields: [venueId], references: [id])
+
+  @@unique([venueId, code])
+}
+
+model Sport {
+  id        String  @id @default(cuid())
+  venueId   String
+  name      String
+  sub       String
+  icon      String
+  basePaise Int
+  active    Boolean @default(true)
+  sortOrder Int     @default(0)
+  venue     Venue   @relation(fields: [venueId], references: [id])
+  turfs     Turf[]
+}
+
+model Turf {
+  id      String  @id @default(cuid())
+  venueId String
+  sportId String
+  name    String
+  surface String
+  icon    String
+  active  Boolean @default(true)
+  venue   Venue   @relation(fields: [venueId], references: [id])
+  sport   Sport   @relation(fields: [sportId], references: [id])
+  holds   SlotHold[]
+}
+
+// Ephemeral mutual-exclusion table. Presence of a row = the slot is taken.
+// A fully-open slot simply has no row. The @@unique makes an all-or-nothing
+// multi-slot claim atomic: a concurrent claim on the same slot throws P2002
+// and the whole transaction rolls back.
+model SlotHold {
+  id            String     @id @default(cuid())
+  turfId        String
+  date          String // YYYY-MM-DD in the venue timezone (no UTC drift)
+  hour          Int
+  status        HoldStatus
+  bookingId     String?
+  holdExpiresAt DateTime?
+  createdAt     DateTime   @default(now())
+  turf          Turf       @relation(fields: [turfId], references: [id])
+  booking       Booking?   @relation(fields: [bookingId], references: [id])
+
+  @@unique([turfId, date, hour])
+  @@index([date])
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  code            String        @unique // public reference, e.g. SX8421
+  entryCode       String // gate PIN — distinct from the shareable code
+  venueId         String
+  userId          String?
+  source          BookingSource @default(ONLINE)
+  status          BookingStatus @default(PENDING_PAYMENT)
+  customerName    String
+  customerPhone   String
+  teamName        String?
+  subtotalPaise   Int
+  feePaise        Int
+  discountPaise   Int           @default(0)
+  couponCode      String?
+  totalPaise      Int
+  depositPaise    Int
+  amountPaidPaise Int           @default(0)
+  amountDuePaise  Int           @default(0)
+  idempotencyKey  String?       @unique
+  createdAt       DateTime      @default(now())
+  cancelledAt     DateTime?
+  venue           Venue         @relation(fields: [venueId], references: [id])
+  user            User?         @relation(fields: [userId], references: [id])
+  slots           BookingSlot[]
+  holds           SlotHold[]
+  payments        Payment[]
+
+  @@index([venueId])
+}
+
+model BookingSlot {
+  id           String    @id @default(cuid())
+  bookingId    String
+  turfId       String
+  date         String
+  hour         Int
+  pricePaise   Int
+  isPeak       Boolean
+  status       SlotState @default(ACTIVE)
+  refundedPaise Int      @default(0)
+  booking      Booking   @relation(fields: [bookingId], references: [id])
+
+  @@index([turfId, date])
+}
+
+model Payment {
+  id         String          @id @default(cuid())
+  bookingId  String
+  provider   PaymentProvider
+  orderId    String
+  paymentId  String?         @unique
+  signature  String?
+  amountPaise Int
+  status     PaymentStatus   @default(CREATED)
+  raw        Json?
+  createdAt  DateTime        @default(now())
+  booking    Booking         @relation(fields: [bookingId], references: [id])
+}
+
+// Owner-applied "regular" tag, keyed by phone (walk-ins have no User row).
+// Foundation for loyalty later (blueprint §4.9).
+model RegularTag {
+  id        String   @id @default(cuid())
+  venueId   String
+  phone     String
+  createdAt DateTime @default(now())
+
+  @@unique([venueId, phone])
+}
+
+model OtpChallenge {
+  id         String    @id @default(cuid())
+  phone      String?
+  email      String?
+  codeHash   String
+  code       String? // dev-mode only: plaintext so /dev/last-otp can echo it
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([phone])
+  @@index([email])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  familyId  String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+}

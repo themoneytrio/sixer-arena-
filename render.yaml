@@ -1,0 +1,84 @@
+# Render blueprint for Sixer Arena — one Postgres, the backend API, and the two
+# static front-ends. Deploy via Render Dashboard → New → Blueprint (point it at
+# this repo). All four resources come up together on the free plan.
+#
+# After the FIRST successful deploy, seed the demo venue once from the backend's
+# Render Shell:   pnpm --filter @sixer/backend seed
+databases:
+  - name: sixer-db
+    plan: free
+    databaseName: sixer
+    user: sixer
+
+services:
+  # ---- Backend API (Fastify, run via tsx) ----
+  - type: web
+    name: sixer-backend
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @sixer/backend exec prisma generate && pnpm --filter @sixer/backend exec prisma migrate deploy
+    startCommand: pnpm --filter @sixer/backend start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: NODE_OPTIONS
+        value: --experimental-sqlite
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sixer-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: VENUE_TZ
+        value: Asia/Kolkata
+      - key: OTP_RATE_MAX
+        value: "20"
+      # Optional real integrations — set these in the dashboard to go live:
+      #   SMTP_USER / SMTP_PASS / SMTP_FROM  (email OTP)
+      #   RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET / RAZORPAY_WEBHOOK_SECRET
+
+  # ---- Consumer app (Vite static) ----
+  - type: web
+    name: sixer-consumer
+    runtime: static
+    rootDir: .
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @sixer/consumer build
+    staticPublishPath: apps/consumer/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: NODE_OPTIONS
+        value: --experimental-sqlite
+      - key: VITE_API_BASE
+        fromService:
+          type: web
+          name: sixer-backend
+          property: host
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # ---- Owner console (Vite static) ----
+  - type: web
+    name: sixer-owner
+    runtime: static
+    rootDir: .
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @sixer/owner build
+    staticPublishPath: apps/owner/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: NODE_OPTIONS
+        value: --experimental-sqlite
+      - key: VITE_API_BASE
+        fromService:
+          type: web
+          name: sixer-backend
+          property: host
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

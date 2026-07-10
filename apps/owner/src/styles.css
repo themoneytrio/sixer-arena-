@@ -1,0 +1,18 @@
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0;
+  font-family: Archivo, system-ui, sans-serif;
+  background: #e4e4dd;
+  background-image: radial-gradient(#d3d3cb 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+input, select { font-family: inherit; }
+.ov::-webkit-scrollbar { width: 8px; height: 8px; }
+.ov::-webkit-scrollbar-thumb { background: #d7d7cf; border-radius: 8px; }
+@keyframes ovrise { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes ovgrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes ovfade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ovsheet { from { transform: translateY(20px) scale(0.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+@keyframes ovspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }

@@ -1,0 +1,22 @@
+{
+  "name": "sixer-arena",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sixer Arena — turf & playzone booking. Consumer app + owner console + backend.",
+  "packageManager": "pnpm@11.11.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "concurrently -n backend,consumer,owner -c green,yellow,cyan \"pnpm --filter @sixer/backend dev\" \"pnpm --filter @sixer/consumer dev\" \"pnpm --filter @sixer/owner dev\"",
+    "db:migrate": "pnpm --filter @sixer/backend prisma migrate deploy",
+    "db:seed": "pnpm --filter @sixer/backend seed",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "prisma", "esbuild"]
+  }
+}

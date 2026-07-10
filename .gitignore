@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.log
+pgdata/
+.DS_Store
+apps/backend/prisma/*.db
+.vite/
+.claude/
+*.class

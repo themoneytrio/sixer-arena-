@@ -1,0 +1,59 @@
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  margin: 0;
+  font-family: Archivo, system-ui, sans-serif;
+  background: #e9e9e3;
+  background-image: radial-gradient(#d7d7cf 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Real phone / installed PWA: the app owns the whole screen, so drop the
+   desktop dotted backdrop and stop the page itself from scrolling/bouncing —
+   the inner .sx-scroll panels do the scrolling. */
+@media (max-width: 560px), (display-mode: standalone) {
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: #14130e;
+    background-image: none;
+  }
+}
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+input {
+  font-family: inherit;
+}
+.sx-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+.sx-scroll {
+  scrollbar-width: none;
+}
+@keyframes sxpop {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes sxspin { to { transform: rotate(360deg); } }
+@keyframes sxrise {
+  from { transform: translateY(14px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes sxpulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; }
+}

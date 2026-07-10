@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:Archivo,system-ui,sans-serif;background:#E9E9E3;background-image:radial-gradient(#d7d7cf 1px,transparent 1px);background-size:22px 22px}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  .sx-scroll::-webkit-scrollbar{width:0;display:none}
+  .sx-scroll{scrollbar-width:none}
+  @keyframes sxpop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+  @keyframes sxspin{to{transform:rotate(360deg)}}
+  @keyframes sxrise{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+  @keyframes sxsheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  @keyframes sxpulse{0%,100%{opacity:.35}50%{opacity:.9}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px">
+  <div style="position:relative;width:404px;height:850px;background:#0b0b08;border-radius:54px;padding:13px;box-shadow:0 40px 90px -20px rgba(20,19,14,.55),0 0 0 2px #232219,inset 0 0 0 2px #000">
+    <div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);width:118px;height:30px;background:#000;border-radius:0 0 18px 18px;z-index:60"></div>
+
+    <div class="sx-scroll" style="position:relative;width:100%;height:100%;background:#F4F4EE;border-radius:42px;overflow:hidden;display:flex;flex-direction:column">
+
+      <!-- ===== SPLASH ===== -->
+      <sc-if value="{{ isSplash }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;z-index:50;background:radial-gradient(120% 90% at 50% 15%,#201E14 0%,#14130E 55%,#0b0b08 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px">
+          <div style="width:118px;height:118px;border-radius:30px;background:#FFD400;display:flex;align-items:center;justify-content:center;box-shadow:0 0 60px -6px rgba(255,212,0,.7);animation:sxpop .5s ease both">
+            <span style="font-family:Anton;font-size:62px;color:#14130E;line-height:1">6</span>
+          </div>
+          <div style="text-align:center">
+            <div style="font-family:Anton;font-size:40px;letter-spacing:2px;color:#fff;line-height:.95">SIXER ARENA</div>
+            <div style="margin-top:10px;font-size:12px;font-weight:700;letter-spacing:4px;color:#FFD400;text-transform:uppercase">Box Cricket · Turf Booking</div>
+          </div>
+          <div style="position:absolute;bottom:44px;display:flex;gap:6px">
+            <div style="width:7px;height:7px;border-radius:50%;background:#FFD400;animation:sxpulse 1s infinite"></div>
+            <div style="width:7px;height:7px;border-radius:50%;background:#FFD400;animation:sxpulse 1s infinite .2s"></div>
+            <div style="width:7px;height:7px;border-radius:50%;background:#FFD400;animation:sxpulse 1s infinite .4s"></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===== LOGIN ===== -->
+      <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0;z-index:40;background:#14130E;display:flex;flex-direction:column">
+          <div style="flex:1;padding:66px 30px 0;display:flex;flex-direction:column">
+            <div style="width:60px;height:60px;border-radius:17px;background:#FFD400;display:flex;align-items:center;justify-content:center;margin-bottom:auto">
+              <span style="font-family:Anton;font-size:34px;color:#14130E">6</span>
+            </div>
+            <div style="margin-bottom:26px">
+              <div style="font-family:Anton;font-size:34px;color:#fff;line-height:1.02">{{ loginTitle }}</div>
+              <div style="margin-top:8px;font-size:13.5px;color:#9a988a;line-height:1.4">{{ loginSub }}</div>
+            </div>
+
+            <sc-if value="{{ loginIsPhone }}" hint-placeholder-val="{{ true }}">
+              <div>
+                <div style="display:flex;align-items:center;gap:10px;background:#201E15;border:1.5px solid #34321f;border-radius:15px;padding:0 16px;height:60px">
+                  <span style="font-size:17px;font-weight:800;color:#fff">+91</span>
+                  <div style="width:1px;height:26px;background:#3a3826"></div>
+                  <input value="{{ phone }}" onInput="{{ onPhone }}" inputmode="numeric" maxlength="10" placeholder="98765 43210" style="flex:1;background:none;border:none;outline:none;font-family:Archivo;font-size:18px;font-weight:700;letter-spacing:1px;color:#fff" />
+                </div>
+                <div style="margin-top:8px;font-size:11.5px;color:#75736a">We'll send a one-time code on WhatsApp.</div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ loginIsOtp }}" hint-placeholder-val="{{ false }}">
+              <div>
+                <div style="display:flex;gap:9px">
+                  <sc-for list="{{ otpBoxes }}" as="b" hint-placeholder-count="4">
+                    <div style="{{ b.style }}">{{ b.ch }}</div>
+                  </sc-for>
+                </div>
+                <div style="margin-top:14px;font-size:12px;color:#9a988a">Enter <b style="color:#FFD400">any 4 digits</b> to continue · <span style="color:#75736a">Resend in 0:24</span></div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ loginIsName }}" hint-placeholder-val="{{ false }}">
+              <div>
+                <div style="background:#201E15;border:1.5px solid #34321f;border-radius:15px;padding:0 16px;height:60px;display:flex;align-items:center">
+                  <input value="{{ name }}" onInput="{{ onName }}" placeholder="Your name" style="flex:1;background:none;border:none;outline:none;font-family:Archivo;font-size:18px;font-weight:700;color:#fff" />
+                </div>
+                <div style="margin-top:8px;font-size:11.5px;color:#75736a">So the turf knows who booked.</div>
+              </div>
+            </sc-if>
+          </div>
+
+          <!-- keypad -->
+          <div style="padding:14px 22px 22px;background:#14130E">
+            <sc-if value="{{ loginShowPad }}" hint-placeholder-val="{{ true }}">
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px">
+                <sc-for list="{{ padKeys }}" as="k" hint-placeholder-count="12">
+                  <button onClick="{{ k.onTap }}" style="{{ k.style }}">{{ k.label }}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <button onClick="{{ onLoginNext }}" style="{{ loginBtnStyle }}">{{ loginBtn }}</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===== HOME / BOOK A SLOT ===== -->
+      <sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
+        <div class="sx-scroll" style="flex:1;overflow-y:auto;padding-bottom:150px">
+          <!-- header -->
+          <div style="background:linear-gradient(160deg,#201E14,#14130E);padding:56px 22px 20px;border-radius:0 0 26px 26px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="display:flex;align-items:center;gap:6px;color:#FFD400;font-size:11px;font-weight:700;letter-spacing:.5px"><span style="font-size:12px">◉</span> Kanpur · Kalyanpur</div>
+                <div style="font-family:Anton;font-size:28px;color:#fff;margin-top:4px;line-height:1">Grab your ground</div>
+                <div style="font-size:11.5px;color:#9a988a;margin-top:4px">Real-time availability · instant WhatsApp confirmation</div>
+              </div>
+              <button onClick="{{ goProfile }}" style="width:44px;height:44px;border-radius:14px;background:#FFD400;display:flex;align-items:center;justify-content:center;font-family:Anton;font-size:20px;color:#14130E">{{ initial }}</button>
+            </div>
+          </div>
+
+          <!-- sport filter (only when the owner has added more than one sport) -->
+          <sc-if value="{{ multiSport }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:18px 0 0">
+              <div style="padding:0 22px 10px;font-size:12px;font-weight:800;letter-spacing:.4px;color:#14130E;text-transform:uppercase">Pick a sport</div>
+              <div class="sx-scroll" style="display:flex;gap:9px;overflow-x:auto;padding:0 22px 4px">
+                <sc-for list="{{ sportChips }}" as="sp" hint-placeholder-count="2">
+                  <button onClick="{{ sp.onTap }}" style="{{ sp.style }}"><span style="font-size:17px">{{ sp.icon }}</span><span>{{ sp.name }}</span></button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- turf(s) -->
+          <div style="padding:16px 0 4px">
+            <div style="padding:0 22px 10px;font-size:12px;font-weight:800;letter-spacing:.4px;color:#14130E;text-transform:uppercase">{{ turfHeading }}</div>
+            <div class="sx-scroll" style="display:flex;gap:11px;overflow-x:auto;padding:0 22px 6px">
+              <sc-for list="{{ turfsView }}" as="tf" hint-placeholder-count="1">
+                <button onClick="{{ tf.onTap }}" style="{{ tf.style }}">
+                  <div style="{{ tf.iconWrap }}">{{ tf.icon }}</div>
+                  <div style="flex:1;min-width:0">
+                    <div style="{{ tf.nameStyle }}">{{ tf.name }}</div>
+                    <div style="{{ tf.subStyle }}">{{ tf.sub }}</div>
+                  </div>
+                  <div style="{{ tf.priceStyle }}">{{ tf.fromStr }}</div>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+
+          <!-- dates -->
+          <div style="padding:10px 0 2px">
+            <div style="padding:0 22px 10px;font-size:12px;font-weight:800;letter-spacing:.4px;color:#14130E;text-transform:uppercase">When</div>
+            <div class="sx-scroll" style="display:flex;gap:9px;overflow-x:auto;padding:0 22px 4px">
+              <sc-for list="{{ datesView }}" as="d" hint-placeholder-count="7">
+                <button onClick="{{ d.onTap }}" style="{{ d.style }}">
+                  <span style="{{ d.dowStyle }}">{{ d.dow }}</span>
+                  <span style="{{ d.numStyle }}">{{ d.num }}</span>
+                  <span style="{{ d.moStyle }}">{{ d.mo }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+
+          <!-- legend -->
+          <div style="display:flex;gap:16px;padding:14px 22px 6px">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#6C6C61"><span style="width:9px;height:9px;border-radius:3px;background:#FFD400"></span>Open</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#6C6C61"><span style="width:9px;height:9px;border-radius:3px;background:#FF5A2C"></span>Peak</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#6C6C61"><span style="width:9px;height:9px;border-radius:3px;background:#D8D8D0"></span>Full</div>
+          </div>
+
+          <!-- slot grid -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:6px 22px 4px">
+            <sc-for list="{{ slotsView }}" as="s" hint-placeholder-count="12">
+              <button onClick="{{ s.onTap }}" disabled="{{ s.disabled }}" style="{{ s.style }}">
+                <div style="{{ s.barStyle }}"></div>
+                <div style="display:flex;flex-direction:column;align-items:flex-start;gap:3px">
+                  <span style="font-size:15px;font-weight:800;letter-spacing:.2px">{{ s.time }}</span>
+                  <span style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums">{{ s.priceStr }}</span>
+                </div>
+                <span style="{{ s.badgeStyle }}">{{ s.badge }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- sticky cart -->
+        <sc-if value="{{ hasCart }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;left:14px;right:14px;bottom:78px;z-index:30;animation:sxrise .25s ease both">
+            <button onClick="{{ goCheckout }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:#14130E;border-radius:18px;padding:14px 16px 14px 18px;box-shadow:0 18px 34px -12px rgba(20,19,14,.6)">
+              <div style="text-align:left">
+                <div style="font-size:11px;font-weight:700;color:#FFD400">{{ cartCountStr }}</div>
+                <div style="font-family:Anton;font-size:22px;color:#fff;line-height:1;font-variant-numeric:tabular-nums">{{ cartTotalStr }}</div>
+              </div>
+              <span style="display:flex;align-items:center;gap:8px;background:#FFD400;color:#14130E;font-weight:800;font-size:14px;padding:11px 18px;border-radius:13px">Book now →</span>
+            </button>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <!-- ===== CHECKOUT ===== -->
+      <sc-if value="{{ isCheckout }}" hint-placeholder-val="{{ false }}">
+        <div class="sx-scroll" style="flex:1;overflow-y:auto;background:#F4F4EE;padding-bottom:120px">
+          <div style="display:flex;align-items:center;gap:12px;padding:56px 20px 16px">
+            <button onClick="{{ goHome }}" style="width:40px;height:40px;border-radius:12px;background:#fff;border:1px solid #E6E6DE;font-size:18px;color:#14130E">←</button>
+            <div style="font-family:Anton;font-size:26px;color:#14130E">Checkout</div>
+          </div>
+
+          <div style="padding:0 18px">
+            <div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:#6C6C61;text-transform:uppercase;margin-bottom:8px">Your slots</div>
+            <div style="background:#fff;border:1px solid #E6E6DE;border-radius:16px;overflow:hidden">
+              <sc-for list="{{ cartView }}" as="c" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:12px;padding:14px 15px;border-bottom:1px solid #F0F0EA">
+                  <div style="width:40px;height:40px;border-radius:12px;background:#F4F4EE;display:flex;align-items:center;justify-content:center;font-size:20px">{{ c.icon }}</div>
+                  <div style="flex:1">
+                    <div style="font-size:14px;font-weight:800;color:#14130E">{{ c.title }}</div>
+                    <div style="font-size:11.5px;color:#6C6C61">{{ c.subtitle }}</div>
+                  </div>
+                  <div style="font-size:14px;font-weight:800;color:#14130E;font-variant-numeric:tabular-nums">{{ c.priceStr }}</div>
+                  <button onClick="{{ c.onRemove }}" style="width:26px;height:26px;border-radius:8px;background:#F4F4EE;color:#E5533C;font-size:15px;font-weight:800">×</button>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:#6C6C61;text-transform:uppercase;margin:20px 0 8px">Your details</div>
+            <div style="background:#fff;border:1px solid #E6E6DE;border-radius:16px;padding:6px 14px">
+              <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #F0F0EA">
+                <span style="font-size:12px;font-weight:700;color:#6C6C61;width:64px">Name</span>
+                <input value="{{ name }}" onInput="{{ onName }}" placeholder="Your name" style="flex:1;border:none;outline:none;font-family:Archivo;font-size:14.5px;font-weight:700;color:#14130E;background:none" />
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #F0F0EA">
+                <span style="font-size:12px;font-weight:700;color:#6C6C61;width:64px">Phone</span>
+                <span style="flex:1;font-size:14.5px;font-weight:700;color:#14130E">+91 {{ phoneStr }}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:11px 0">
+                <span style="font-size:12px;font-weight:700;color:#6C6C61;width:64px">Team</span>
+                <input value="{{ team }}" onInput="{{ onTeam }}" placeholder="Optional" style="flex:1;border:none;outline:none;font-family:Archivo;font-size:14.5px;font-weight:700;color:#14130E;background:none" />
+              </div>
+            </div>
+
+            <div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:#6C6C61;text-transform:uppercase;margin:20px 0 8px">Bill</div>
+            <div style="background:#fff;border:1px solid #E6E6DE;border-radius:16px;padding:14px 15px">
+              <div style="display:flex;justify-content:space-between;font-size:13.5px;color:#6C6C61;margin-bottom:9px"><span>Slot total ({{ cartCountStr }})</span><span style="font-weight:700;color:#14130E;font-variant-numeric:tabular-nums">{{ subtotalStr }}</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:13.5px;color:#6C6C61;margin-bottom:11px;padding-bottom:11px;border-bottom:1px dashed #E6E6DE"><span>Convenience fee</span><span style="font-weight:700;color:#14130E;font-variant-numeric:tabular-nums">{{ feeStr }}</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:13px;font-weight:800;color:#14130E">To pay</span><span style="font-family:Anton;font-size:24px;color:#14130E;font-variant-numeric:tabular-nums">{{ grandTotalStr }}</span></div>
+              <div style="margin-top:8px;font-size:11px;color:#6C6C61;background:#FFF9D6;border:1px solid #F2E7A0;border-radius:9px;padding:7px 9px">Pay <b style="color:#14130E">{{ depositStr }}</b> now to lock the slot · balance at the ground.</div>
+            </div>
+
+            <div style="font-size:12px;font-weight:800;letter-spacing:.4px;color:#6C6C61;text-transform:uppercase;margin:20px 0 8px">Pay with</div>
+            <div style="display:flex;gap:9px">
+              <sc-for list="{{ payMethods }}" as="p" hint-placeholder-count="3">
+                <button onClick="{{ p.onTap }}" style="{{ p.style }}"><span style="font-size:19px">{{ p.icon }}</span><span style="font-size:11.5px;font-weight:700">{{ p.name }}</span></button>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:0;z-index:30;padding:14px 18px 22px;background:linear-gradient(#F4F4EE00,#F4F4EE 26%)">
+          <button onClick="{{ payNow }}" style="width:100%;height:56px;border-radius:15px;background:#FFD400;color:#14130E;font-size:16px;font-weight:900;box-shadow:0 14px 26px -10px rgba(255,212,0,.7)">Pay {{ depositStr }} →</button>
+        </div>
+      </sc-if>
+
+      <!-- ===== PAYING ===== -->
+      <sc-if value="{{ isPaying }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;inset:0;z-index:45;background:#14130E;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px">
+          <div style="width:60px;height:60px;border-radius:50%;border:5px solid #34321f;border-top-color:#FFD400;animation:sxspin .8s linear infinite"></div>
+          <div style="text-align:center">
+            <div style="font-family:Anton;font-size:22px;color:#fff">Processing payment</div>
+            <div style="margin-top:6px;font-size:12.5px;color:#9a988a">Securing your slot · don't close this</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===== CONFIRMATION ===== -->
+      <sc-if value="{{ isConfirm }}" hint-placeholder-val="{{ false }}">
+        <div class="sx-scroll" style="flex:1;overflow-y:auto;background:#14130E;padding-bottom:30px">
+          <div style="padding:70px 24px 26px;text-align:center">
+            <div style="width:92px;height:92px;border-radius:50%;background:#FFD400;display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 0 50px -6px rgba(255,212,0,.7);animation:sxpop .5s ease both">
+              <span style="font-size:46px;color:#14130E">✓</span>
+            </div>
+            <div style="font-family:Anton;font-size:32px;color:#fff;margin-top:20px;line-height:1">Slot locked in</div>
+            <div style="margin-top:8px;font-size:13px;color:#9a988a">Booking <b style="color:#FFD400">#{{ lastCode }}</b></div>
+          </div>
+
+          <div style="margin:0 20px;background:#fff;border-radius:18px;padding:16px 16px 6px">
+            <sc-for list="{{ lastSlots }}" as="c" hint-placeholder-count="1">
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #F0F0EA">
+                <div style="width:38px;height:38px;border-radius:11px;background:#F4F4EE;display:flex;align-items:center;justify-content:center;font-size:19px">{{ c.icon }}</div>
+                <div style="flex:1"><div style="font-size:13.5px;font-weight:800;color:#14130E">{{ c.title }}</div><div style="font-size:11px;color:#6C6C61">{{ c.subtitle }}</div></div>
+                <div style="font-size:13.5px;font-weight:800;color:#14130E;font-variant-numeric:tabular-nums">{{ c.priceStr }}</div>
+              </div>
+            </sc-for>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;padding:13px 0 12px"><span style="font-size:12px;font-weight:800;color:#6C6C61">TOTAL PAID</span><span style="font-family:Anton;font-size:22px;color:#14130E;font-variant-numeric:tabular-nums">{{ lastTotalStr }}</span></div>
+          </div>
+
+          <div style="margin:14px 20px 0;display:flex;align-items:center;gap:9px;background:#1e3b18;border:1px solid #2e5a24;border-radius:13px;padding:12px 14px">
+            <span style="font-size:19px">✅</span>
+            <span style="font-size:12.5px;font-weight:600;color:#c7f0b8">Confirmation sent on WhatsApp to +91 {{ phoneStr }}</span>
+          </div>
+
+          <div style="display:flex;gap:9px;padding:16px 20px 4px">
+            <button style="flex:1;height:48px;border-radius:13px;background:#201E15;color:#fff;font-size:12.5px;font-weight:700;border:1px solid #34321f">📅 Calendar</button>
+            <button style="flex:1;height:48px;border-radius:13px;background:#201E15;color:#fff;font-size:12.5px;font-weight:700;border:1px solid #34321f">↗ Share</button>
+            <button style="flex:1;height:48px;border-radius:13px;background:#201E15;color:#fff;font-size:12.5px;font-weight:700;border:1px solid #34321f">◉ Directions</button>
+          </div>
+          <div style="padding:8px 20px 0">
+            <button onClick="{{ goBookings }}" style="width:100%;height:54px;border-radius:15px;background:#FFD400;color:#14130E;font-size:15px;font-weight:900">View my bookings</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===== MY BOOKINGS ===== -->
+      <sc-if value="{{ isBookings }}" hint-placeholder-val="{{ false }}">
+        <div class="sx-scroll" style="flex:1;overflow-y:auto;padding-bottom:100px">
+          <div style="padding:56px 22px 14px"><div style="font-family:Anton;font-size:28px;color:#14130E">My bookings</div></div>
+          <div style="display:flex;gap:8px;padding:0 22px 14px">
+            <button onClick="{{ setUpcoming }}" style="{{ tabUpStyle }}">Upcoming</button>
+            <button onClick="{{ setPast }}" style="{{ tabPastStyle }}">Past</button>
+          </div>
+          <div style="padding:0 18px;display:flex;flex-direction:column;gap:11px">
+            <sc-for list="{{ bookingRows }}" as="b" hint-placeholder-count="2">
+              <button onClick="{{ b.onTap }}" style="display:flex;align-items:center;gap:13px;background:#fff;border:1px solid #E6E6DE;border-radius:16px;padding:14px 15px;text-align:left">
+                <div style="width:46px;height:46px;border-radius:13px;background:#14130E;display:flex;align-items:center;justify-content:center;font-size:22px">{{ b.icon }}</div>
+                <div style="flex:1">
+                  <div style="font-size:14.5px;font-weight:800;color:#14130E">{{ b.title }}</div>
+                  <div style="font-size:11.5px;color:#6C6C61;margin-top:2px">{{ b.subtitle }}</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-size:14px;font-weight:800;color:#14130E;font-variant-numeric:tabular-nums">{{ b.priceStr }}</div>
+                  <div style="{{ b.chipStyle }}">{{ b.status }}</div>
+                </div>
+              </button>
+            </sc-for>
+            <sc-if value="{{ bookingsEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="text-align:center;padding:50px 20px">
+                <div style="font-size:44px">🥅</div>
+                <div style="font-family:Anton;font-size:20px;color:#14130E;margin-top:10px">Nothing here yet</div>
+                <div style="font-size:12.5px;color:#6C6C61;margin-top:4px">Your booked slots will show up here.</div>
+                <button onClick="{{ goHome }}" style="margin-top:16px;height:46px;padding:0 22px;border-radius:13px;background:#FFD400;color:#14130E;font-size:14px;font-weight:800">Grab a ground →</button>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===== BOOKING DETAIL ===== -->
+      <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+        <div class="sx-scroll" style="flex:1;overflow-y:auto;background:#F4F4EE;padding-bottom:30px">
+          <div style="background:linear-gradient(160deg,#201E14,#14130E);padding:56px 22px 24px;border-radius:0 0 24px 24px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+              <button onClick="{{ goBookings }}" style="width:40px;height:40px;border-radius:12px;background:#201E15;border:1px solid #34321f;font-size:18px;color:#fff">←</button>
+              <div style="{{ detailChipStyle }}">{{ detailStatus }}</div>
+            </div>
+            <div style="font-size:28px">{{ detailIcon }}</div>
+            <div style="font-family:Anton;font-size:30px;color:#fff;margin-top:6px;line-height:1.02">{{ detailTitle }}</div>
+            <div style="font-size:13px;color:#9a988a;margin-top:6px">{{ detailSubtitle }}</div>
+          </div>
+
+          <!-- entry code -->
+          <sc-if value="{{ detailUpcoming }}" hint-placeholder-val="{{ true }}">
+            <div style="margin:16px 20px 0;background:#14130E;border-radius:18px;padding:20px;display:flex;align-items:center;gap:18px">
+              <div style="width:96px;height:96px;border-radius:12px;background:#fff;padding:8px;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(7,1fr);gap:2px">
+                <sc-for list="{{ qrCells }}" as="q" hint-placeholder-count="49">
+                  <div style="{{ q.style }}"></div>
+                </sc-for>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:#FFD400;letter-spacing:.5px;text-transform:uppercase">Gate entry code</div>
+                <div style="font-family:Anton;font-size:30px;color:#fff;letter-spacing:3px;margin-top:4px">{{ lastCodeShort }}</div>
+                <div style="font-size:11px;color:#9a988a;margin-top:4px">Show at the gate to enter.</div>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="margin:16px 20px 0;background:#fff;border:1px solid #E6E6DE;border-radius:16px;padding:15px">
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#6C6C61;margin-bottom:9px"><span>Turf</span><span style="font-weight:700;color:#14130E">Sixer Arena · Kalyanpur</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#6C6C61;margin-bottom:9px"><span>Court</span><span style="font-weight:700;color:#14130E">{{ detailCourt }}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#6C6C61;padding-top:9px;border-top:1px dashed #E6E6DE"><span>Amount paid</span><span style="font-weight:800;color:#14130E;font-variant-numeric:tabular-nums">{{ detailTotalStr }}</span></div>
+          </div>
+
+          <div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:9px">
+            <sc-if value="{{ detailUpcoming }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;gap:9px">
+                <button style="flex:1;height:50px;border-radius:14px;background:#14130E;color:#fff;font-size:13.5px;font-weight:800">↻ Reschedule</button>
+                <button onClick="{{ cancelBooking }}" style="flex:1;height:50px;border-radius:14px;background:#FCE9E5;color:#E5533C;font-size:13.5px;font-weight:800;border:1px solid #F4C9BF">Cancel booking</button>
+              </div>
+              <div style="font-size:11px;color:#6C6C61;text-align:center">Free cancellation up to 6 hrs before · 50% refund after.</div>
+            </sc-if>
+            <sc-if value="{{ detailRebook }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ goHome }}" style="height:52px;border-radius:14px;background:#FFD400;color:#14130E;font-size:14.5px;font-weight:900">Rebook this slot</button>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===== PROFILE ===== -->
+      <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ false }}">
+        <div class="sx-scroll" style="flex:1;overflow-y:auto;padding-bottom:100px">
+          <div style="background:linear-gradient(160deg,#201E14,#14130E);padding:60px 22px 26px;border-radius:0 0 24px 24px;display:flex;align-items:center;gap:15px">
+            <div style="width:64px;height:64px;border-radius:20px;background:#FFD400;display:flex;align-items:center;justify-content:center;font-family:Anton;font-size:30px;color:#14130E">{{ initial }}</div>
+            <div><div style="font-family:Anton;font-size:24px;color:#fff">{{ nameOrGuest }}</div><div style="font-size:12.5px;color:#9a988a">+91 {{ phoneStr }}</div></div>
+          </div>
+          <div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:10px">
+            <div style="background:#fff;border:1px solid #E6E6DE;border-radius:16px;overflow:hidden">
+              <sc-for list="{{ profileRows }}" as="r" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:13px;padding:15px 16px;border-bottom:1px solid #F0F0EA"><span style="font-size:19px;width:24px">{{ r.icon }}</span><span style="flex:1;font-size:14px;font-weight:600;color:#14130E">{{ r.label }}</span><span style="color:#B8B8AE;font-size:16px">›</span></div>
+              </sc-for>
+            </div>
+            <button onClick="{{ logout }}" style="height:52px;border-radius:15px;background:#fff;border:1px solid #E6E6DE;color:#E5533C;font-size:14px;font-weight:800">Log out</button>
+            <div style="text-align:center;font-size:11px;color:#B8B8AE;margin-top:4px">Sixer Arena · v1.0</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===== BOTTOM NAV ===== -->
+      <sc-if value="{{ showNav }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;left:0;right:0;bottom:0;z-index:35;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-top:1px solid #E6E6DE;padding:9px 26px 24px;display:flex;justify-content:space-between">
+          <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="3">
+            <button onClick="{{ n.onTap }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;background:none;flex:1">
+              <span style="{{ n.iconStyle }}">{{ n.icon }}</span>
+              <span style="{{ n.labelStyle }}">{{ n.label }}</span>
+            </button>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- ===== TOAST ===== -->
+      <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;left:20px;right:20px;top:56px;z-index:70;animation:sxrise .25s ease both">
+          <div style="display:flex;align-items:center;gap:10px;background:#14130E;border-radius:14px;padding:13px 16px;box-shadow:0 16px 30px -12px rgba(0,0,0,.5)">
+            <span style="width:8px;height:8px;border-radius:50%;background:#FFD400"></span>
+            <span style="font-size:13px;font-weight:700;color:#fff">{{ toast }}</span>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+
+<template id="__bundler_thumbnail" data-bg-color="#14130E">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#14130E"/>
+    <rect x="470" y="250" width="260" height="260" rx="60" fill="#FFD400"/>
+    <text x="600" y="470" font-family="Arial, sans-serif" font-size="200" font-weight="900" fill="#14130E" text-anchor="middle">6</text>
+    <text x="600" y="600" font-family="Arial, sans-serif" font-size="64" font-weight="800" letter-spacing="4" fill="#FFFFFF" text-anchor="middle">SIXER ARENA</text>
+  </svg>
+</template></x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  loadVenue(){ const def={ sports:[{id:'cricket',name:'Box Cricket',sub:'6-a-side',icon:'🏏',base:900}], turfs:[{id:'t1',name:'Cricket Turf',sportId:'cricket',surface:'Astro · floodlit'}] };
+    try{ const raw=localStorage.getItem('sixer_venue_config'); if(raw){ const v=JSON.parse(raw); if(v&&Array.isArray(v.sports)&&Array.isArray(v.turfs)&&v.sports.length&&v.turfs.length) return v; } }catch(e){}
+    return JSON.parse(JSON.stringify(def)); }
+
+  state = {
+    screen: 'splash', tab: 'home', bTab: 'upcoming',
+    venue: this.loadVenue(), turfId: null, sportFilter: null, dateIdx: 0, cart: [],
+    phone: '', otp: '', name: '', team: '', pay: 'upi',
+    loginStep: 'phone', lastCode: null, lastBooking: null,
+    activeId: null, toast: null,
+    bookings: [
+      { id:'seed1', code:'SX7731', past:true, status:'Completed', court:'Cricket Turf', total:1540,
+        slots:[{icon:'🏏',title:'Box Cricket · 6-a-side',subtitle:'Sat 28 Jun · 9 – 10 PM · Cricket Turf',priceStr:'₹1,540'}] },
+      { id:'seed2', code:'SX7702', past:true, status:'Completed', court:'Cricket Turf', total:1215,
+        slots:[{icon:'🏏',title:'Box Cricket · 6-a-side',subtitle:'Sun 22 Jun · 7 – 8 PM · Cricket Turf',priceStr:'₹1,215'}] },
+    ],
+  };
+
+  // Sports & turfs now live in state.venue (see loadVenue) — the owner console edits them.
+
+  componentDidMount(){ this._t = setTimeout(()=>this.setState({screen:'login'}), 1300); }
+  componentWillUnmount(){ clearTimeout(this._t); }
+
+  money(n){ return '₹' + n.toLocaleString('en-IN'); }
+  h12(h){ let p=((h%24)+24)%24; let ap=p<12?'AM':'PM'; let hr=p%12; if(hr===0)hr=12; return {hr,ap}; }
+  slotLabel(h){ const a=this.h12(h), b=this.h12(h+1);
+    return a.ap===b.ap ? `${a.hr} – ${b.hr} ${b.ap}` : `${a.hr}${a.ap} – ${b.hr}${b.ap}`; }
+
+  dates(){
+    const dow=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const out=[]; const base=new Date();
+    for(let i=0;i<7;i++){ const d=new Date(base); d.setDate(base.getDate()+i);
+      out.push({ idx:i, dow: i===0?'Today':dow[d.getDay()], num:d.getDate(), mo:mo[d.getMonth()], weekend:d.getDay()===0||d.getDay()===6 }); }
+    return out;
+  }
+  slotState(dIdx, h, sportIdx, weekend){
+    const peak = (h>=17&&h<=21) || (weekend && h>=15 && h<=21);
+    const seed = (dIdx*13 + h*7 + sportIdx*5);
+    const full = (seed%9===0) || (peak && (dIdx+h+sportIdx)%6===0);
+    return { peak, full };
+  }
+  slotPrice(from, peak){ const p = peak ? from*1.35 : from; return Math.round(p/10)*10; }
+
+  toast(msg){ this.setState({toast:msg}); clearTimeout(this._toast); this._toast=setTimeout(()=>this.setState({toast:null}),2200); }
+
+  toggleSlot(item){
+    const cart=[...this.state.cart]; const i=cart.findIndex(c=>c.key===item.key);
+    if(i>=0) cart.splice(i,1); else cart.push(item);
+    this.setState({cart});
+  }
+  removeCart(key){ this.setState({cart:this.state.cart.filter(c=>c.key!==key)}); }
+
+  pay(){
+    this.setState({screen:'paying'});
+    setTimeout(()=>{
+      const s=this.state; const dv=this.dates();
+      const code='SX'+Math.floor(1000+Math.random()*9000);
+      const slots=s.cart.map(c=>({icon:c.icon,title:`${c.sportName} · ${c.sub}`,subtitle:`${c.dateFull} · ${c.time} · ${c.court}`,priceStr:this.money(c.price)}));
+      const total=s.cart.reduce((a,c)=>a+c.price,0)+ (s.cart.length?30:0);
+      const booking={ id:code, code, past:false, status:'Confirmed', court:s.cart[0]?.court||'Cricket Turf', total, slots };
+      this.setState({ screen:'confirm', lastCode:code, lastBooking:booking, cart:[],
+        bookings:[booking, ...s.bookings] });
+    }, 1600);
+  }
+  cancel(){
+    const bookings=this.state.bookings.map(b=> b.id===this.state.activeId ? {...b,status:'Cancelled',past:true} : b);
+    this.setState({bookings, screen:'app', tab:'bookings', bTab:'upcoming'});
+    this.toast('Booking cancelled · refund initiated');
+  }
+
+  renderVals(){
+    const s=this.state, self=this;
+    const scr=s.screen;
+    const venue=s.venue; const money=(n)=>this.money(n);
+    const multiSport=venue.sports.length>1;
+    const curSportId = multiSport ? (s.sportFilter||venue.sports[0].id) : venue.sports[0].id;
+    const curSport = venue.sports.find(x=>x.id===curSportId)||venue.sports[0];
+    const visTurfs = multiSport ? venue.turfs.filter(t=>t.sportId===curSportId) : venue.turfs;
+    const curTurf = visTurfs.find(t=>t.id===s.turfId) || visTurfs[0] || venue.turfs[0];
+    const turfIdx = venue.turfs.findIndex(t=>curTurf&&t.id===curTurf.id);
+    const dv=this.dates(); const day=dv[s.dateIdx]||dv[0];
+
+    // login pad
+    const activeField = s.loginStep==='name' ? 'name' : (s.loginStep==='otp' ? 'otp' : 'phone');
+    const pushDigit=(d)=>{ if(activeField==='phone'){ this.setState(st=> st.phone.length<10 ? {phone:st.phone+d} : null); }
+      else if(activeField==='otp'){ this.setState(st=> st.otp.length<4 ? {otp:st.otp+d} : null); } };
+    const backspace=()=>{ if(activeField==='phone') this.setState(st=>({phone:st.phone.slice(0,-1)}));
+      else if(activeField==='otp') this.setState(st=>({otp:st.otp.slice(0,-1)})); };
+    const padKeys=['1','2','3','4','5','6','7','8','9','','0','⌫'].map((label,i)=>({
+      label, style:{height:'52px',borderRadius:'14px',fontFamily:'Archivo',fontSize:'22px',fontWeight:800,
+        color: label===''?'transparent':'#fff', background: label===''?'transparent':'#201E15',
+        border: label===''?'none':'1px solid #2c2a1c'},
+      onTap: label===''?()=>{}:(label==='⌫'?backspace:()=>pushDigit(label)),
+    }));
+
+    const loginNext=()=>{
+      if(s.loginStep==='phone'){ if(s.phone.length>=10) this.setState({loginStep:'otp'}); else this.toast('Enter a 10-digit number'); }
+      else if(s.loginStep==='otp'){ if(s.otp.length>=4) this.setState({loginStep: s.name?'done':'name'}, ()=>{ if(s.name) this.setState({screen:'app',tab:'home'}); }); else this.toast('Enter the 4-digit code'); }
+      else if(s.loginStep==='name'){ if((s.name||'').trim()) this.setState({screen:'app',tab:'home'}); else this.toast('Add your name'); }
+    };
+    const otpBoxes=[0,1,2,3].map(i=>({ ch:s.otp[i]||'', style:{flex:1,height:'62px',borderRadius:'15px',display:'flex',alignItems:'center',justifyContent:'center',
+      fontFamily:'Anton',fontSize:'26px',color:'#fff', background:'#201E15', border: (s.otp.length===i)?'1.5px solid #FFD400':'1.5px solid #34321f'} }));
+
+    // sport filter chips (only when the owner added more than one sport)
+    const sportChips=venue.sports.map(sp=>{ const sel=sp.id===curSportId;
+      return { icon:sp.icon, name:sp.name, onTap:()=>this.setState({sportFilter:sp.id, turfId:null}),
+        style:{flex:'0 0 auto',display:'flex',alignItems:'center',gap:'7px',padding:'10px 14px',borderRadius:'13px',fontSize:'13px',fontWeight:800,whiteSpace:'nowrap',
+          background: sel?'#14130E':'#fff', color: sel?'#fff':'#14130E', border: sel?'1px solid #14130E':'1px solid #E6E6DE'} };
+    });
+
+    // turf cards
+    const singleTurf=visTurfs.length===1;
+    const sportOf=(t)=>venue.sports.find(x=>x.id===t.sportId)||venue.sports[0];
+    const turfsView=visTurfs.map(t=>{ const sp=sportOf(t); const sel=curTurf&&t.id===curTurf.id;
+      return { icon:sp.icon, name:t.name, sub:`${sp.name} · ${sp.sub} · ${t.surface}`, fromStr:'from '+money(sp.base),
+        onTap:()=>this.setState({turfId:t.id}),
+        style:{flex:'0 0 auto',width: singleTurf?'100%':'232px',display:'flex',alignItems:'center',gap:'12px',padding:'14px 15px',borderRadius:'16px',textAlign:'left',
+          background: sel?'#14130E':'#fff', border: sel?'1px solid #14130E':'1px solid #E6E6DE',
+          boxShadow: sel?'0 12px 22px -12px rgba(20,19,14,.5)':'none'},
+        iconWrap:{width:'46px',height:'46px',flex:'none',borderRadius:'13px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'24px',background: sel?'#201E15':'#F4F4EE'},
+        nameStyle:{fontSize:'15px',fontWeight:800,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color: sel?'#fff':'#14130E'},
+        subStyle:{fontSize:'11px',fontWeight:600,marginTop:'2px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',color: sel?'#FFD400':'#6C6C61'},
+        priceStyle:{flex:'none',fontSize:'12px',fontWeight:800,textAlign:'right',color: sel?'#FFD400':'#14130E'} };
+    });
+
+    // dates view
+    const datesView=dv.map(d=>{ const sel=d.idx===s.dateIdx;
+      return { dow:d.dow, num:String(d.num), mo:d.mo, onTap:()=>this.setState({dateIdx:d.idx}),
+        style:{flex:'0 0 auto',width:'58px',display:'flex',flexDirection:'column',alignItems:'center',gap:'2px',padding:'11px 0',borderRadius:'15px',
+          background: sel?'#14130E':'#fff', border: sel?'1px solid #14130E':'1px solid #E6E6DE'},
+        dowStyle:{fontSize:'10.5px',fontWeight:700,color: sel?'#FFD400':'#6C6C61'},
+        numStyle:{fontFamily:'Anton',fontSize:'20px',color: sel?'#fff':'#14130E'},
+        moStyle:{fontSize:'10px',fontWeight:600,color: sel?'#9a988a':'#9a988a'} };
+    });
+
+    // slots view
+    const dateFull=`${day.dow==='Today'?'Today':day.dow} ${day.num} ${day.mo}`;
+    const slotsView=[]; 
+    for(let h=6; h<=23; h++){
+      const st=this.slotState(s.dateIdx,h,turfIdx<0?0:turfIdx,day.weekend);
+      const price=this.slotPrice(curSport.base, st.peak);
+      const key=`${curTurf?curTurf.id:'t'}|${s.dateIdx}|${h}`;
+      const sel=s.cart.some(c=>c.key===key);
+      let bg='#fff',border='1px solid #E6E6DE',color='#14130E',opacity=1,bar='#FFD400',badge='Open',
+          badgeBg='#FFF6C2',badgeColor='#8A7400';
+      if(st.peak){ bar='#FF5A2C'; badge='Peak'; badgeBg='#FFE6DD'; badgeColor='#C63C14'; }
+      if(st.full){ bg='#F1F1EC'; border='1px solid #E9E9E1'; color='#A8A89E'; opacity=.75; bar='#DDDDD4'; badge='Full'; badgeBg='#E9E9E1'; badgeColor='#A8A89E'; }
+      if(sel){ bg='#14130E'; border='1px solid #14130E'; color='#fff'; bar='#FFD400'; badge='Picked'; badgeBg='#FFD400'; badgeColor='#14130E'; }
+      slotsView.push({
+        time:this.slotLabel(h), priceStr:this.money(price), badge, disabled:st.full,
+        onTap: st.full?()=>{}:()=>this.toggleSlot({key,turfId:curTurf?curTurf.id:'t',turfName:curTurf?curTurf.name:'Turf',sportName:curSport.name,sub:curSport.sub,icon:curSport.icon,court:curTurf?curTurf.name:'Turf',dateIdx:s.dateIdx,dateFull,time:this.slotLabel(h),price,peak:st.peak}),
+        style:{position:'relative',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 12px 12px 18px',borderRadius:'13px',
+          background:bg,border,color,opacity,overflow:'hidden',minHeight:'62px',boxShadow: sel?'0 10px 20px -10px rgba(20,19,14,.5)':'none'},
+        barStyle:{position:'absolute',left:0,top:0,bottom:0,width:'4px',background:bar},
+        badgeStyle:{fontSize:'9.5px',fontWeight:800,letterSpacing:'.3px',textTransform:'uppercase',padding:'3px 7px',borderRadius:'7px',background:badgeBg,color:badgeColor},
+      });
+    }
+
+    // cart / bill
+    const cartView=s.cart.map(c=>({ icon:c.icon, title:`${c.sportName} · ${c.sub}`, subtitle:`${c.dateFull} · ${c.time}`,
+      priceStr:this.money(c.price), onRemove:()=>this.removeCart(c.key) }));
+    const subtotal=s.cart.reduce((a,c)=>a+c.price,0);
+    const fee=s.cart.length?30:0; const grand=subtotal+fee; const deposit=Math.round(grand*0.4/10)*10;
+    const cartCount=s.cart.length;
+    const cartCountStr=`${cartCount} slot${cartCount===1?'':'s'} selected`;
+
+    const payMethods=[{id:'upi',name:'UPI',icon:'🟣'},{id:'card',name:'Card',icon:'💳'},{id:'net',name:'Netbank',icon:'🏦'}].map(p=>{
+      const sel=p.id===s.pay;
+      return { name:p.name, icon:p.icon, onTap:()=>this.setState({pay:p.id}),
+        style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:'5px',padding:'13px 0',borderRadius:'14px',
+          background: sel?'#14130E':'#fff', border: sel?'1px solid #14130E':'1px solid #E6E6DE', color: sel?'#fff':'#14130E'} };
+    });
+
+    // bookings
+    const chip=(status)=>{ let bg='#FFF6C2',c='#8A7400'; 
+      if(status==='Confirmed'){bg='#E4F7DC';c='#2F6B1E';} if(status==='Completed'){bg='#EEEEE8';c='#6C6C61';} if(status==='Cancelled'){bg='#FCE9E5';c='#E5533C';}
+      return {marginTop:'5px',fontSize:'10px',fontWeight:800,letterSpacing:'.3px',padding:'3px 8px',borderRadius:'8px',background:bg,color:c,display:'inline-block'}; };
+    const list=s.bookings.filter(b=> s.bTab==='upcoming' ? !b.past : b.past);
+    const bookingRows=list.map(b=>{ const first=b.slots[0]; const extra=b.slots.length>1?` · +${b.slots.length-1} more`:'';
+      return { icon:first.icon, title:first.title, subtitle:first.subtitle.replace(/ · [^·]+$/, extra? (' '+extra):''), priceStr:this.money(b.total),
+        status:b.status, chipStyle:chip(b.status), onTap:()=>this.setState({screen:'detail',activeId:b.id}) };
+    });
+
+    // detail
+    const active=s.bookings.find(b=>b.id===s.activeId)||s.lastBooking||s.bookings[0];
+    const detailUpcoming = active && !active.past && active.status!=='Cancelled';
+    const dchip=chip(active?active.status:'Confirmed'); 
+    const detailChipStyle={...dchip,fontSize:'11px'};
+    const qrCells=Array.from({length:49}).map((_,i)=>{ const on=(i*7+3)%3!==0 && (i%5!==2); 
+      const corner=(i<2||(i>=7&&i<9)||i===14||i===4||i===5||(i>=11&&i<13));
+      return {style:{background:(on||corner)?'#14130E':'#fff',borderRadius:'1px'}}; });
+
+    // profile
+    const profileRows=[{icon:'👥',label:'Saved teams'},{icon:'⭐',label:'Favourite turf'},{icon:'🧾',label:'Payment history'},{icon:'🔔',label:'Notifications'}];
+
+    // nav
+    const navDef=[{id:'home',icon:'⚡',label:'Book'},{id:'bookings',icon:'🎟️',label:'Bookings'},{id:'profile',icon:'👤',label:'Profile'}];
+    const navItems=navDef.map(n=>{ const sel=s.tab===n.id && scr==='app';
+      return { icon:n.icon, label:n.label,
+        onTap:()=>this.setState({screen:'app',tab:n.id}),
+        iconStyle:{fontSize:'19px',opacity: sel?1:.4, filter: sel?'none':'grayscale(1)'},
+        labelStyle:{fontSize:'10.5px',fontWeight:700,color: sel?'#14130E':'#B8B8AE'} };
+    });
+
+    const isApp = scr==='app';
+    return {
+      isSplash: scr==='splash', isLogin: scr==='login', isPaying: scr==='paying',
+      isCheckout: scr==='checkout', isConfirm: scr==='confirm', isDetail: scr==='detail',
+      isHome: isApp && s.tab==='home', isBookings: isApp && s.tab==='bookings', isProfile: isApp && s.tab==='profile',
+      showNav: isApp,
+
+      // login
+      loginTitle: s.loginStep==='phone'?'Enter your number' : s.loginStep==='otp'?'Verify OTP' : "What's your name?",
+      loginSub: s.loginStep==='phone'?'One tap and the ground is yours.' : s.loginStep==='otp'?`Sent to +91 ${s.phone}` : 'Almost there.',
+      loginIsPhone: s.loginStep==='phone', loginIsOtp: s.loginStep==='otp', loginIsName: s.loginStep==='name',
+      loginShowPad: s.loginStep!=='name',
+      loginBtn: s.loginStep==='phone'?'Send OTP' : s.loginStep==='otp'?'Verify & continue' : 'Start booking',
+      loginBtnStyle:{width:'100%',height:'56px',borderRadius:'15px',background:'#FFD400',color:'#14130E',fontSize:'16px',fontWeight:900},
+      onLoginNext: loginNext, padKeys, otpBoxes, onPhone:e=>this.setState({phone:(e.target.value||'').replace(/\D/g,'').slice(0,10)}), onName:e=>this.setState({name:e.target.value}), onTeam:e=>this.setState({team:e.target.value}),
+      phone:s.phone, name:s.name, team:s.team,
+      phoneStr: s.phone||'98765 43210',
+
+      initial: (s.name||'G').trim().charAt(0).toUpperCase(),
+      nameOrGuest: s.name || 'Guest',
+
+      turfsView, sportChips, multiSport, turfHeading: singleTurf?'Your turf':'Choose your turf',
+      datesView, slotsView,
+      hasCart: cartCount>0, cartCountStr, cartTotalStr:this.money(grand),
+      goCheckout:()=> cartCount>0 && this.setState({screen:'checkout'}),
+      goHome:()=>this.setState({screen:'app',tab:'home'}),
+      goProfile:()=>this.setState({screen:'app',tab:'profile'}),
+      goBookings:()=>this.setState({screen:'app',tab:'bookings',bTab:'upcoming'}),
+
+      cartView, subtotalStr:this.money(subtotal), feeStr:this.money(fee), grandTotalStr:this.money(grand), depositStr:this.money(deposit),
+      payMethods, payNow:()=>this.pay(),
+
+      lastCode:s.lastCode, lastCodeShort:s.lastCode? s.lastCode.replace('SX','') : '0000',
+      lastSlots: s.lastBooking? s.lastBooking.slots : [], lastTotalStr: s.lastBooking? this.money(s.lastBooking.total):'₹0',
+
+      setUpcoming:()=>this.setState({bTab:'upcoming'}), setPast:()=>this.setState({bTab:'past'}),
+      tabUpStyle: this._tab(s.bTab==='upcoming'), tabPastStyle:this._tab(s.bTab==='past'),
+      bookingRows, bookingsEmpty: bookingRows.length===0,
+
+      detailIcon: active? active.slots[0].icon:'⚽', detailTitle: active? active.slots[0].title:'',
+      detailSubtitle: active? active.slots[0].subtitle:'', detailCourt: active? active.court:'', detailTotalStr: active? this.money(active.total):'₹0',
+      detailStatus: active? active.status:'', detailChipStyle, detailUpcoming, detailRebook: active? active.past:false,
+      qrCells,
+      cancelBooking:()=>this.cancel(),
+
+      profileRows, logout:()=>this.setState({screen:'login',loginStep:'phone',phone:'',otp:'',name:''}),
+      navItems,
+      hasToast: !!s.toast, toast:s.toast,
+    };
+  }
+  _tab(active){ return {flex:1,height:'42px',borderRadius:'12px',fontSize:'13.5px',fontWeight:800,
+    background: active?'#14130E':'#fff', color: active?'#fff':'#6C6C61', border: active?'1px solid #14130E':'1px solid #E6E6DE'}; }
+}
+</script>
+</body>
+</html>

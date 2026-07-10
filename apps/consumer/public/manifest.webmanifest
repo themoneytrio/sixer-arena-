@@ -1,0 +1,20 @@
+{
+  "name": "Sixer Arena — Turf Booking",
+  "short_name": "Sixer Arena",
+  "description": "Book box-cricket and turf slots at Sixer Arena — real-time availability, instant confirmation.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14130E",
+  "theme_color": "#14130E",
+  "categories": ["sports", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
