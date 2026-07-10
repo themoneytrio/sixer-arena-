@@ -60,10 +60,7 @@ services:
       - key: COREPACK_INTEGRITY_KEYS
         value: "0"
       - key: VITE_API_BASE
-        fromService:
-          type: web
-          name: sixer-backend
-          property: host
+        value: https://sixer-backend.onrender.com
     routes:
       - type: rewrite
         source: /*
@@ -86,10 +83,7 @@ services:
       - key: COREPACK_INTEGRITY_KEYS
         value: "0"
       - key: VITE_API_BASE
-        fromService:
-          type: web
-          name: sixer-backend
-          property: host
+        value: https://sixer-backend.onrender.com
     routes:
       - type: rewrite
         source: /*

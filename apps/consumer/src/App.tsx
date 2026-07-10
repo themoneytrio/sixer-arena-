@@ -124,12 +124,9 @@ export function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
 
   const [loginStep, setLoginStep] = useState<LoginStep>("phone");
-  const [loginMethod, setLoginMethod] = useState<"phone" | "email">("phone");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
-  const [otpDev, setOtpDev] = useState(false); // any-code/dev hint on the OTP screen
-  const [devCode, setDevCode] = useState<string | null>(null); // shown when email is in dev mode
+  const [otpDev, setOtpDev] = useState(false); // "any 4 digits" hint on the OTP screen (mock SMS)
   const [name, setName] = useState("");
   const [team, setTeam] = useState("");
   const [pay, setPay] = useState<"upi" | "card" | "net">("upi");
@@ -168,8 +165,7 @@ export function App() {
           const me = await api.me();
           if (me.name) {
             setName(me.name);
-            if (me.email) { setEmail(me.email); setLoginMethod("email"); }
-            else if (me.phone) setPhone(me.phone);
+            if (me.phone) setPhone(me.phone);
             setScreen("app");
             return;
           }
@@ -223,33 +219,19 @@ export function App() {
   }
   async function loginNext() {
     if (loginStep === "phone") {
-      if (loginMethod === "phone") {
-        if (phone.length < 10) return toast("Enter a 10-digit number");
-        try {
-          const r = await api.requestOtp(phone);
-          setOtpDev(r.mock);
-          setDevCode(null);
-          setOtp("");
-          setLoginStep("otp");
-        } catch (e: any) {
-          toast(e.status === 429 ? "Too many tries — wait a bit" : "Couldn't send code");
-        }
-      } else {
-        if (!/^\S+@\S+\.\S+$/.test(email.trim())) return toast("Enter a valid email");
-        try {
-          const r = await api.requestEmailOtp(email.trim());
-          setOtpDev(r.dev);
-          setDevCode(r.devCode ?? null);
-          setOtp("");
-          setLoginStep("otp");
-        } catch (e: any) {
-          toast(e.status === 429 ? "Too many tries — wait a bit" : "Couldn't send code");
-        }
+      if (phone.length < 10) return toast("Enter a 10-digit number");
+      try {
+        const r = await api.requestOtp(phone);
+        setOtpDev(r.mock);
+        setOtp("");
+        setLoginStep("otp");
+      } catch (e: any) {
+        toast(e.status === 429 ? "Too many tries — wait a bit" : "Couldn't send code");
       }
     } else if (loginStep === "otp") {
       if (otp.length < 4) return toast("Enter the 4-digit code");
       try {
-        const r = loginMethod === "phone" ? await api.verifyOtp(phone, otp) : await api.verifyEmailOtp(email.trim(), otp);
+        const r = await api.verifyOtp(phone, otp);
         if (r.isNewUser) setLoginStep("name");
         else {
           setName(r.name || "");
@@ -437,7 +419,6 @@ export function App() {
       image: "/icon.svg",
       prefill: {
         name: name || undefined,
-        email: loginMethod === "email" && email.trim() ? email.trim() : undefined,
         contact: phone || undefined,
       },
       theme: { color: YELLOW },
@@ -514,8 +495,8 @@ export function App() {
 
   const initial = (name || "G").trim().charAt(0).toUpperCase();
   const phoneStr = phone || "98765 43210";
-  // What we show as the account's contact — a phone (with +91) or an email.
-  const contact = loginMethod === "email" && email.trim() ? email.trim() : `+91 ${phoneStr}`;
+  // What we show as the account's contact.
+  const contact = `+91 ${phoneStr}`;
   const showNav = screen === "app";
   const fullScreen = useFullScreenApp();
 
@@ -528,16 +509,11 @@ export function App() {
           {screen === "login" && (
             <Login
               step={loginStep}
-              method={loginMethod}
-              onMethod={(m) => { setLoginMethod(m); setOtp(""); }}
               phone={phone}
-              email={email}
               otp={otp}
               name={name}
               otpDev={otpDev}
-              devCode={devCode}
               onPhone={setPhone}
-              onEmail={setEmail}
               onName={setName}
               pushDigit={pushDigit}
               backspace={backspace}
@@ -634,7 +610,7 @@ export function App() {
               name={name}
               contact={contact}
               initial={initial}
-              logout={() => { api.logout(); setName(""); setPhone(""); setEmail(""); setOtp(""); setDevCode(null); setOtpDev(false); setLoginMethod("phone"); setLoginStep("phone"); setScreen("login"); }}
+              logout={() => { api.logout(); setName(""); setPhone(""); setOtp(""); setOtpDev(false); setLoginStep("phone"); setScreen("login"); }}
             />
           )}
 
@@ -668,28 +644,22 @@ function Splash() {
 }
 
 function Login(props: {
-  step: LoginStep; method: "phone" | "email"; onMethod: (m: "phone" | "email") => void;
-  phone: string; email: string; otp: string; name: string;
-  otpDev: boolean; devCode: string | null;
-  onPhone: (v: string) => void; onEmail: (v: string) => void; onName: (v: string) => void;
+  step: LoginStep;
+  phone: string; otp: string; name: string;
+  otpDev: boolean;
+  onPhone: (v: string) => void; onName: (v: string) => void;
   pushDigit: (d: string) => void; backspace: () => void; next: () => void;
 }) {
-  const { step, method, phone, email, otp, name, otpDev, devCode } = props;
-  const identifyTitle = method === "phone" ? "Enter your number" : "Enter your email";
-  const title = step === "phone" ? identifyTitle : step === "otp" ? "Verify code" : "What's your name?";
-  const sentTo = method === "phone" ? `+91 ${phone}` : email;
-  const sub = step === "phone" ? "One tap and the ground is yours." : step === "otp" ? `Sent to ${sentTo}` : "Almost there.";
-  const btn = step === "phone" ? "Send code" : step === "otp" ? "Verify & continue" : "Start booking";
-  // Numeric keypad only for the phone-number entry and the OTP entry.
-  const showPad = step === "otp" || (step === "phone" && method === "phone");
+  const { step, phone, otp, name, otpDev } = props;
+  const title = step === "phone" ? "Enter your number" : step === "otp" ? "Verify OTP" : "What's your name?";
+  const sub = step === "phone" ? "One tap and the ground is yours." : step === "otp" ? `Sent to +91 ${phone}` : "Almost there.";
+  const btn = step === "phone" ? "Send OTP" : step === "otp" ? "Verify & continue" : "Start booking";
+  const showPad = step !== "name";
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
 
-  // OTP hint copy depends on channel + whether we're in a code-less dev mode.
-  const otpHint = devCode
-    ? <>Dev mode — your code is <b style={{ color: YELLOW }}>{devCode}</b></>
-    : method === "phone" && otpDev
-      ? <>Enter <b style={{ color: YELLOW }}>any 4 digits</b> to continue</>
-      : <>Enter the 4-digit code we sent{method === "email" ? " to your email" : ""}.</>;
+  const otpHint = otpDev
+    ? <>Enter <b style={{ color: YELLOW }}>any 4 digits</b> to continue</>
+    : <>Enter the 4-digit code we sent by SMS.</>;
 
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 40, background: INK, display: "flex", flexDirection: "column" }}>
@@ -704,36 +674,12 @@ function Login(props: {
 
         {step === "phone" && (
           <div>
-            {/* Method toggle: phone number or email */}
-            <div style={{ display: "flex", gap: 7, background: PANEL, border: "1.5px solid #34321f", borderRadius: 13, padding: 4, marginBottom: 14 }}>
-              {(["phone", "email"] as const).map((m) => {
-                const sel = method === m;
-                return (
-                  <button key={m} onClick={() => props.onMethod(m)} style={{ flex: 1, height: 40, borderRadius: 10, fontSize: 13, fontWeight: 800, color: sel ? INK : "#cfcdbf", background: sel ? YELLOW : "transparent" }}>
-                    {m === "phone" ? "📱 Phone" : "✉️ Email"}
-                  </button>
-                );
-              })}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: PANEL, border: "1.5px solid #34321f", borderRadius: 15, padding: "0 16px", height: 60 }}>
+              <span style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>+91</span>
+              <div style={{ width: 1, height: 26, background: "#3a3826" }} />
+              <input value={phone} onChange={(e) => props.onPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" maxLength={10} placeholder="98765 43210" style={{ flex: 1, background: "none", border: "none", outline: "none", fontFamily: "Archivo", fontSize: 18, fontWeight: 700, letterSpacing: 1, color: "#fff" }} />
             </div>
-
-            {method === "phone" ? (
-              <>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, background: PANEL, border: "1.5px solid #34321f", borderRadius: 15, padding: "0 16px", height: 60 }}>
-                  <span style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>+91</span>
-                  <div style={{ width: 1, height: 26, background: "#3a3826" }} />
-                  <input value={phone} onChange={(e) => props.onPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" maxLength={10} placeholder="98765 43210" style={{ flex: 1, background: "none", border: "none", outline: "none", fontFamily: "Archivo", fontSize: 18, fontWeight: 700, letterSpacing: 1, color: "#fff" }} />
-                </div>
-                <div style={{ marginTop: 8, fontSize: 11.5, color: "#75736a" }}>We'll send a one-time code by SMS.</div>
-              </>
-            ) : (
-              <>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, background: PANEL, border: "1.5px solid #34321f", borderRadius: 15, padding: "0 16px", height: 60 }}>
-                  <span style={{ fontSize: 18 }}>✉️</span>
-                  <input value={email} onChange={(e) => props.onEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && props.next()} inputMode="email" autoCapitalize="off" autoCorrect="off" placeholder="you@example.com" style={{ flex: 1, background: "none", border: "none", outline: "none", fontFamily: "Archivo", fontSize: 16, fontWeight: 700, color: "#fff" }} />
-                </div>
-                <div style={{ marginTop: 8, fontSize: 11.5, color: "#75736a" }}>We'll email you a one-time login code.</div>
-              </>
-            )}
+            <div style={{ marginTop: 8, fontSize: 11.5, color: "#75736a" }}>We'll send a one-time code by SMS.</div>
           </div>
         )}
 
