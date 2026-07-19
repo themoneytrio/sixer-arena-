@@ -69,6 +69,8 @@ export interface CheckoutRequest {
   name: string;
   teamName?: string;
   paymentMethod: PaymentMethod;
+  /** Pay just the deposit now (default) or the full amount in one go. */
+  payMode?: "deposit" | "full";
   couponCode?: string;
   idempotencyKey: string;
 }
@@ -100,7 +102,17 @@ export interface CheckoutResponse {
   orderId: string;
   keyId?: string;
   depositPaise: number;
+  /** What the payment sheet actually charges (deposit or full total). */
+  payablePaise: number;
   totalPaise: number;
+}
+
+export interface PayBalanceResponse {
+  bookingId: string;
+  provider: "razorpay" | "mock";
+  orderId: string;
+  keyId?: string;
+  amountPaise: number;
 }
 
 export interface SlotConflict {

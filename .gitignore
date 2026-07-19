@@ -8,5 +8,6 @@ pgdata/
 .DS_Store
 apps/backend/prisma/*.db
 .vite/
+*.tsbuildinfo
 .claude/
 *.class

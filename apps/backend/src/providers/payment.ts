@@ -28,7 +28,11 @@ class MockPayments implements PaymentProvider {
   }
   verifySignature(orderId: string, paymentId: string, signature: string): boolean {
     const expected = crypto.createHmac("sha256", this.secret).update(`${orderId}|${paymentId}`).digest("hex");
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature || ""));
+    try {
+      return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature || ""));
+    } catch {
+      return false; // length mismatch on garbled input
+    }
   }
   async refund(paymentId: string) {
     return { refundId: "rfnd_mock_" + crypto.randomBytes(6).toString("hex") };

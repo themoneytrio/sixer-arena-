@@ -199,17 +199,30 @@ model BookingSlot {
 }
 
 model Payment {
-  id         String          @id @default(cuid())
-  bookingId  String
-  provider   PaymentProvider
-  orderId    String
-  paymentId  String?         @unique
-  signature  String?
-  amountPaise Int
-  status     PaymentStatus   @default(CREATED)
-  raw        Json?
-  createdAt  DateTime        @default(now())
-  booking    Booking         @relation(fields: [bookingId], references: [id])
+  id            String          @id @default(cuid())
+  bookingId     String
+  provider      PaymentProvider
+  orderId       String
+  paymentId     String?         @unique
+  signature     String?
+  amountPaise   Int
+  status        PaymentStatus   @default(CREATED)
+  refundId      String? // razorpay rfnd_... id
+  refundedPaise Int             @default(0)
+  raw           Json?
+  createdAt     DateTime        @default(now())
+  booking       Booking         @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@index([orderId])
+}
+
+// Webhook delivery dedupe. Razorpay retries deliveries; x-razorpay-event-id is
+// globally unique per event, so insert-or-P2002-skip gives exactly-once handling.
+model WebhookEvent {
+  id        String   @id // x-razorpay-event-id
+  event     String
+  createdAt DateTime @default(now())
 }
 
 // Owner-applied "regular" tag, keyed by phone (walk-ins have no User row).
