@@ -69,7 +69,12 @@ export async function ownerRoutes(app: FastifyInstance) {
     const { venueId, id } = req.params as any;
     const b = await prisma.booking.findFirst({ where: { id, venueId } });
     if (!b) return reply.code(404).send({ error: "not_found" });
-    await prisma.booking.update({ where: { id }, data: { amountPaidPaise: b.totalPaise, amountDuePaise: 0 } });
+    // Additive (not = totalPaise): consistent with online confirms, and keeps
+    // the record truthful if paid ever diverges from total.
+    await prisma.booking.update({
+      where: { id },
+      data: { amountPaidPaise: b.amountPaidPaise + b.amountDuePaise, amountDuePaise: 0 },
+    });
     return { ok: true };
   });
 

@@ -3,6 +3,7 @@ import type {
   AvailabilityResponse,
   CheckoutRequest,
   CheckoutResponse,
+  PayBalanceResponse,
   BookingView,
   RecurringPreview,
   SlotTakenError,
@@ -145,6 +146,9 @@ export const api = {
   },
   async abandonBooking(bookingId: string) {
     return json(`/bookings/${bookingId}/abandon`, { method: "POST" }).catch(() => ({}));
+  },
+  async payBalance(bookingId: string): Promise<PayBalanceResponse> {
+    return json(`/bookings/${bookingId}/pay-balance`, { method: "POST" });
   },
   async bookings(tab: "upcoming" | "past"): Promise<BookingView[]> {
     return json<{ bookings: BookingView[] }>(`/bookings?tab=${tab}`).then((r) => r.bookings);

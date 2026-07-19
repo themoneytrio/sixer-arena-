@@ -60,7 +60,9 @@ Set these in the Render dashboard → **sixer-backend** → **Environment**, the
   these, email login runs in dev mode (code shown in the app).
 - **Razorpay** — `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
   Without these, checkout uses the deterministic mock. Point the Razorpay webhook at
-  `https://sixer-backend.onrender.com/webhooks/razorpay`.
+  `https://sixer-backend.onrender.com/webhooks/razorpay` and subscribe it to
+  `payment.captured`, `payment.failed`, and `refund.processed` (the last one stamps
+  refund ids onto payments — including refunds issued from the Razorpay dashboard).
 
 ## Notes
 

@@ -9,7 +9,7 @@ import { isPeakHour, slotPricePaise, feePaise, depositPaise } from "../domain/pr
 import { OPEN_HOUR, CLOSE_HOUR, hoursUntil } from "../domain/dates.js";
 import { generateBookingCode, generateEntryCode } from "../domain/codes.js";
 import { payments, mockSign } from "../providers/payment.js";
-import { confirmPayment, failBooking } from "../domain/confirm.js";
+import { confirmPayment, failBooking, failPayment } from "../domain/confirm.js";
 import { resolveCoupon, redeemCoupon, CouponError } from "../domain/coupons.js";
 
 const checkoutSchema = z.object({
@@ -21,6 +21,7 @@ const checkoutSchema = z.object({
   name: z.string().min(1).max(60),
   teamName: z.string().max(60).optional(),
   paymentMethod: z.enum(["upi", "card", "net"]),
+  payMode: z.enum(["deposit", "full"]).default("deposit"),
   couponCode: z.string().max(30).optional(),
   idempotencyKey: z.string().min(6).max(80),
 });
@@ -37,7 +38,7 @@ export async function bookingRoutes(app: FastifyInstance) {
       include: { payments: true },
     });
     if (existing) {
-      const pay = existing.payments[0];
+      const pay = existing.payments.find((p) => p.status === "CREATED") ?? existing.payments[0];
       return {
         bookingId: existing.id,
         code: existing.code,
@@ -45,6 +46,7 @@ export async function bookingRoutes(app: FastifyInstance) {
         orderId: pay?.orderId ?? "",
         keyId: config.razorpay.keyId || undefined,
         depositPaise: existing.depositPaise,
+        payablePaise: pay?.amountPaise ?? existing.depositPaise,
         totalPaise: existing.totalPaise,
       };
     }
@@ -85,6 +87,10 @@ export async function bookingRoutes(app: FastifyInstance) {
 
     const total = Math.max(0, subtotal + fee - discount);
     const deposit = depositPaise(total, venue.depositPercent);
+    // Server-authoritative amount charged now — the client only picks the mode.
+    const payable = body.payMode === "full" ? total : deposit;
+    // Razorpay's minimum order is ₹1. A 100% coupon can shrink below that.
+    if (payable < 100 && body.payMode === "deposit") return reply.code(400).send({ error: "amount_too_small" });
     const code = await generateBookingCode();
 
     // Reserve slots atomically (HELD) + create the pending booking.
@@ -131,9 +137,28 @@ export async function bookingRoutes(app: FastifyInstance) {
     // Create the payment order (network for real Razorpay) after the slots are
     // safely held. If it fails, release the hold so the slot isn't stuck.
     try {
-      const order = await payments.createOrder(deposit, code, { bookingId });
+      // Fully-discounted full payment (below Razorpay's ₹1 minimum): nothing to
+      // charge — confirm the booking directly without an order.
+      if (payable < 100) {
+        const orderId = "order_free_" + bookingId;
+        await prisma.payment.create({
+          data: { bookingId, provider: payments.kind === "razorpay" ? "RAZORPAY" : "MOCK", orderId, amountPaise: 0, status: "CREATED" },
+        });
+        await confirmPayment(orderId, "free_" + bookingId);
+        return {
+          bookingId,
+          code,
+          provider: payments.kind,
+          orderId,
+          keyId: config.razorpay.keyId || undefined,
+          depositPaise: deposit,
+          payablePaise: 0,
+          totalPaise: total,
+        };
+      }
+      const order = await payments.createOrder(payable, code, { bookingId });
       await prisma.payment.create({
-        data: { bookingId, provider: payments.kind === "razorpay" ? "RAZORPAY" : "MOCK", orderId: order.orderId, amountPaise: deposit },
+        data: { bookingId, provider: payments.kind === "razorpay" ? "RAZORPAY" : "MOCK", orderId: order.orderId, amountPaise: payable },
       });
       return {
         bookingId,
@@ -142,6 +167,7 @@ export async function bookingRoutes(app: FastifyInstance) {
         orderId: order.orderId,
         keyId: order.keyId,
         depositPaise: deposit,
+        payablePaise: payable,
         totalPaise: total,
       };
     } catch (e) {
@@ -174,10 +200,16 @@ export async function bookingRoutes(app: FastifyInstance) {
     if (!booking) return reply.code(404).send({ error: "not_found" });
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = parse.data;
     if (!payments.verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature)) {
-      await failBooking(id);
+      // A garbled callback on a confirmed booking (balance payment) must never
+      // cancel the booking — only void that payment attempt.
+      if (booking.status === "PENDING_PAYMENT") await failBooking(id);
+      else await failPayment(razorpay_order_id);
       return reply.code(400).send({ error: "bad_signature" });
     }
-    await confirmPayment(id, razorpay_payment_id);
+    await confirmPayment(razorpay_order_id, razorpay_payment_id, {
+      signature: razorpay_signature,
+      raw: parse.data,
+    });
     return { ok: true };
   });
 
@@ -188,6 +220,56 @@ export async function bookingRoutes(app: FastifyInstance) {
     const booking = await prisma.booking.findFirst({ where: { id, userId: req.userId!, status: "PENDING_PAYMENT" } });
     if (booking) await failBooking(id);
     return { ok: true };
+  });
+
+  // Pay the remaining balance online (the deposit flow only collects part of
+  // the total; the rest is normally cash at the turf). Creates a fresh order +
+  // Payment row; verification reuses /verify-payment and the webhook.
+  app.post("/bookings/:id/pay-balance", { preHandler: app.authenticate }, async (req, reply) => {
+    const id = (req.params as any).id;
+    const booking = await prisma.booking.findFirst({ where: { id, userId: req.userId! } });
+    if (!booking) return reply.code(404).send({ error: "not_found" });
+    if (booking.status !== "CONFIRMED") return reply.code(400).send({ error: "not_payable" });
+    // Also the answer to the owner-cash race: once the owner marks the balance
+    // collected in cash, starting an online payment 400s and the client refreshes.
+    if (booking.amountDuePaise <= 0) return reply.code(400).send({ error: "nothing_due" });
+
+    const due = booking.amountDuePaise;
+    // Reuse-or-supersede: a double-tap must not create duplicate Razorpay orders.
+    const open = await prisma.payment.findFirst({
+      where: { bookingId: id, status: "CREATED" },
+      orderBy: { createdAt: "desc" },
+    });
+    if (open) {
+      if (open.amountPaise === due) {
+        return {
+          bookingId: id,
+          provider: payments.kind,
+          orderId: open.orderId,
+          keyId: config.razorpay.keyId || undefined,
+          amountPaise: due,
+        };
+      }
+      // Stale amount (due changed since the order was created) — void it.
+      await prisma.payment.update({ where: { id: open.id }, data: { status: "FAILED" } });
+    }
+
+    try {
+      const order = await payments.createOrder(due, booking.code + "-BAL", { bookingId: id });
+      await prisma.payment.create({
+        data: { bookingId: id, provider: payments.kind === "razorpay" ? "RAZORPAY" : "MOCK", orderId: order.orderId, amountPaise: due },
+      });
+      return {
+        bookingId: id,
+        provider: order.provider,
+        orderId: order.orderId,
+        keyId: order.keyId,
+        amountPaise: due,
+      };
+    } catch {
+      // Booking is confirmed and must survive a failed order creation.
+      return reply.code(502).send({ error: "payment_init_failed" });
+    }
   });
 
   // Move a (single-slot) confirmed booking to a new time on the same turf.
@@ -269,17 +351,44 @@ export async function bookingRoutes(app: FastifyInstance) {
     const refundPct = earliest && hoursUntil(earliest.date, earliest.hour) >= freeHours ? 100 : (venue?.cancellationRefundPercent ?? 50);
     const refund = Math.round((b.amountPaidPaise * refundPct) / 100);
 
+    // Issue refunds BEFORE mutating anything, and never inside the transaction
+    // (no network calls in a DB transaction). If any refund call fails we abort
+    // with nothing changed — the booking stays CONFIRMED and cancel is retried.
+    // Split newest-first across all PAID payments (deposit + balance), capped
+    // at what each payment has left to refund.
+    const issued: { paymentDbId: string; refundId: string; part: number }[] = [];
+    if (refund > 0) {
+      const paid = await prisma.payment.findMany({
+        where: { bookingId: id, status: "PAID" },
+        orderBy: { createdAt: "desc" },
+      });
+      let remaining = refund;
+      for (const p of paid) {
+        if (remaining <= 0) break;
+        const part = Math.min(remaining, p.amountPaise - p.refundedPaise);
+        if (part <= 0 || !p.paymentId) continue;
+        try {
+          const { refundId } = await payments.refund(p.paymentId, part);
+          issued.push({ paymentDbId: p.id, refundId, part });
+          remaining -= part;
+        } catch {
+          return reply.code(502).send({ error: "refund_failed" });
+        }
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.slotHold.deleteMany({ where: { bookingId: id } });
       await tx.bookingSlot.updateMany({ where: { bookingId: id }, data: { status: "CANCELLED", refundedPaise: refund } });
       await tx.booking.update({ where: { id }, data: { status: "CANCELLED", cancelledAt: new Date(), amountDuePaise: 0 } });
-      if (refund > 0) {
-        const pay = await tx.payment.findFirst({ where: { bookingId: id, status: "PAID" } });
-        if (pay?.paymentId) {
-          try { await payments.refund(pay.paymentId, refund); } catch { /* mock/no-op */ }
-          await tx.payment.update({ where: { id: pay.id }, data: { status: "REFUNDED" } });
-        }
+      for (const r of issued) {
+        await tx.payment.update({
+          where: { id: r.paymentDbId },
+          data: { status: "REFUNDED", refundId: r.refundId, refundedPaise: r.part },
+        });
       }
+      // If this tx fails after refunds went through, the refund.processed
+      // webhook stamps the payment rows anyway (self-healing).
     });
     return { ok: true, refundPaise: refund, refundPercent: refundPct };
   });
@@ -291,12 +400,12 @@ export async function bookingRoutes(app: FastifyInstance) {
       const bookingId = (req.params as any).bookingId;
       const booking = await prisma.booking.findFirst({ where: { id: bookingId, userId: req.userId! }, include: { payments: true } });
       if (!booking) return reply.code(404).send({ error: "not_found" });
-      const order = booking.payments[0];
+      const order = booking.payments.find((p) => p.status === "CREATED");
       if (!order) return reply.code(400).send({ error: "no_order" });
       const paymentId = "pay_mock_" + Date.now();
       const signature = mockSign(order.orderId, paymentId);
       if (!payments.verifySignature(order.orderId, paymentId, signature)) return reply.code(500).send({ error: "sign_failed" });
-      await confirmPayment(bookingId, paymentId);
+      await confirmPayment(order.orderId, paymentId, { signature });
       return { ok: true };
     });
   }

@@ -130,6 +130,7 @@ export function App() {
   const [name, setName] = useState("");
   const [team, setTeam] = useState("");
   const [pay, setPay] = useState<"upi" | "card" | "net">("upi");
+  const [payMode, setPayMode] = useState<"deposit" | "full">("deposit");
 
   const [recurringPreview, setRecurringPreview] = useState<RecurringPreview | null>(null);
   const [recurringOn, setRecurringOn] = useState(false);
@@ -367,6 +368,62 @@ export function App() {
     setScreen("confirm");
   }
 
+  // Shared Razorpay sheet opener — used by checkout (deposit/full) and by the
+  // pay-balance flow on the detail screen. Caller decides what dismissal means.
+  async function openRazorpaySheet(opts: {
+    keyId?: string;
+    orderId: string;
+    amountPaise: number;
+    bookingId: string;
+    code: string;
+    onSuccess: () => void | Promise<void>;
+    onVerifyError: () => void;
+    onDismiss: () => void;
+    onLoadFail: () => void | Promise<void>;
+  }) {
+    const ready = await loadRazorpay();
+    if (!ready || !(window as any).Razorpay) {
+      await opts.onLoadFail();
+      return;
+    }
+    let settled = false; // guard so dismiss can't fire after success
+    const rzp = new (window as any).Razorpay({
+      key: opts.keyId,
+      order_id: opts.orderId,
+      amount: opts.amountPaise,
+      currency: "INR",
+      name: "Sixer Arena",
+      description: `Booking ${opts.code}`,
+      image: "/icon.svg",
+      prefill: {
+        name: name || undefined,
+        contact: phone || undefined,
+      },
+      theme: { color: YELLOW },
+      handler: async (resp: any) => {
+        settled = true;
+        setScreen("paying");
+        try {
+          await api.verifyPayment(opts.bookingId, {
+            razorpay_order_id: resp.razorpay_order_id,
+            razorpay_payment_id: resp.razorpay_payment_id,
+            razorpay_signature: resp.razorpay_signature,
+          });
+          await opts.onSuccess();
+        } catch {
+          opts.onVerifyError();
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          if (settled) return;
+          opts.onDismiss();
+        },
+      },
+    });
+    rzp.open();
+  }
+
   async function payNow() {
     if (!cart.length) return;
     setScreen("paying");
@@ -378,11 +435,20 @@ export function App() {
         name: name || "Guest",
         teamName: team || undefined,
         paymentMethod: pay,
+        payMode,
         couponCode: appliedCoupon?.code,
         idempotencyKey: crypto.randomUUID(),
       });
     } catch (e) {
       onCheckoutError(e);
+      return;
+    }
+
+    const payable = co.payablePaise ?? co.depositPaise;
+
+    // Fully discounted (₹0): the backend already confirmed the booking.
+    if (payable <= 0) {
+      await finishToConfirm(co.bookingId);
       return;
     }
 
@@ -399,56 +465,30 @@ export function App() {
     }
 
     // Real Razorpay: open the hosted checkout sheet.
-    const ready = await loadRazorpay();
-    if (!ready || !(window as any).Razorpay) {
-      await api.abandonBooking(co.bookingId);
-      setScreen("checkout");
-      toast("Couldn't open payment. Check your connection.");
-      return;
-    }
-
-    const booking = co; // narrowed for the callbacks below
-    let settled = false; // guard so dismiss can't fire after success
-    const rzp = new (window as any).Razorpay({
-      key: booking.keyId,
-      order_id: booking.orderId,
-      amount: booking.depositPaise,
-      currency: "INR",
-      name: "Sixer Arena",
-      description: `Booking ${booking.code}`,
-      image: "/icon.svg",
-      prefill: {
-        name: name || undefined,
-        contact: phone || undefined,
-      },
-      theme: { color: YELLOW },
-      handler: async (resp: any) => {
-        settled = true;
-        setScreen("paying");
-        try {
-          await api.verifyPayment(booking.bookingId, {
-            razorpay_order_id: resp.razorpay_order_id,
-            razorpay_payment_id: resp.razorpay_payment_id,
-            razorpay_signature: resp.razorpay_signature,
-          });
-          await finishToConfirm(booking.bookingId);
-        } catch {
-          setScreen("checkout");
-          toast("Couldn't confirm payment. If you were charged, it'll reconcile shortly.");
-        }
-      },
-      modal: {
-        ondismiss: () => {
-          if (settled) return;
-          api.abandonBooking(booking.bookingId);
-          setScreen("checkout");
-          toast("Payment cancelled — your slot was released.");
-        },
-      },
-    });
     // Show the checkout screen behind the sheet rather than the spinner.
     setScreen("checkout");
-    rzp.open();
+    await openRazorpaySheet({
+      keyId: co.keyId,
+      orderId: co.orderId,
+      amountPaise: payable,
+      bookingId: co.bookingId,
+      code: co.code,
+      onSuccess: () => finishToConfirm(co.bookingId),
+      onVerifyError: () => {
+        setScreen("checkout");
+        toast("Couldn't confirm payment. If you were charged, it'll reconcile shortly.");
+      },
+      onDismiss: () => {
+        api.abandonBooking(co.bookingId);
+        setScreen("checkout");
+        toast("Payment cancelled — your slot was released.");
+      },
+      onLoadFail: async () => {
+        await api.abandonBooking(co.bookingId);
+        setScreen("checkout");
+        toast("Couldn't open payment. Check your connection.");
+      },
+    });
   }
 
   async function openBookings(t: "upcoming" | "past" = "upcoming") {
@@ -491,6 +531,50 @@ export function App() {
     } catch {
       toast("Couldn't cancel");
     }
+  }
+  async function payBalance() {
+    if (!active) return;
+    let r: Awaited<ReturnType<typeof api.payBalance>>;
+    try {
+      r = await api.payBalance(active.id);
+    } catch (e: any) {
+      if (e?.body?.error === "nothing_due") {
+        await refreshActive();
+        toast("Already settled");
+      } else {
+        toast("Couldn't start payment. Try again.");
+      }
+      return;
+    }
+    if (r.provider === "mock") {
+      try {
+        await api.completeMockPayment(active.id);
+        await refreshActive();
+        toast("Balance paid ✓");
+      } catch {
+        toast("Payment couldn't go through. Try again.");
+      }
+      return;
+    }
+    await openRazorpaySheet({
+      keyId: r.keyId,
+      orderId: r.orderId,
+      amountPaise: r.amountPaise,
+      bookingId: active.id,
+      code: active.code,
+      onSuccess: async () => {
+        await refreshActive();
+        setScreen("detail");
+        toast("Balance paid ✓");
+      },
+      onVerifyError: () => {
+        setScreen("detail");
+        toast("Couldn't confirm payment. If you were charged, it'll reconcile shortly.");
+      },
+      // Booking is already confirmed — dismissing just leaves the balance due.
+      onDismiss: () => toast("Payment cancelled"),
+      onLoadFail: () => toast("Couldn't open payment. Check your connection."),
+    });
   }
 
   const initial = (name || "G").trim().charAt(0).toUpperCase();
@@ -560,6 +644,8 @@ export function App() {
               deposit={deposit}
               pay={pay}
               setPay={setPay}
+              payMode={payMode}
+              setPayMode={setPayMode}
               recurringPreview={canRecur ? recurringPreview : null}
               recurringOn={recurringOn}
               onToggleRecurring={toggleRecurring}
@@ -601,6 +687,7 @@ export function App() {
               refresh={refreshActive}
               back={() => { setScreen("app"); setTab("bookings"); }}
               cancel={cancelBooking}
+              payBalance={payBalance}
               rebook={() => { setScreen("app"); setTab("home"); }}
             />
           )}
@@ -858,6 +945,7 @@ function Checkout(props: {
   onName: (v: string) => void; onTeam: (v: string) => void; onRemove: (k: string) => void;
   subtotal: number; fee: number; grand: number; deposit: number;
   pay: "upi" | "card" | "net"; setPay: (p: "upi" | "card" | "net") => void;
+  payMode: "deposit" | "full"; setPayMode: (m: "deposit" | "full") => void;
   recurringPreview: RecurringPreview | null; recurringOn: boolean; onToggleRecurring: (on: boolean) => void;
   couponInput: string; setCouponInput: (v: string) => void; applyCoupon: () => void;
   appliedCoupon: { code: string; discountPaise: number; percentOff: number } | null; couponMsg: string | null; removeCoupon: () => void; discount: number;
@@ -866,6 +954,7 @@ function Checkout(props: {
   const methods = [{ id: "upi", name: "UPI", icon: "🟣" }, { id: "card", name: "Card", icon: "💳" }, { id: "net", name: "Netbank", icon: "🏦" }] as const;
   const cartCountStr = `${props.cart.length} slot${props.cart.length === 1 ? "" : "s"} selected`;
   const today = props.cart[0]?.date;
+  const payingNow = props.payMode === "full" ? props.grand : props.deposit;
   return (
     <>
       <div className="sx-scroll" style={{ flex: 1, overflowY: "auto", background: APP, paddingBottom: 120 }}>
@@ -929,11 +1018,30 @@ function Checkout(props: {
               </div>
             )}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: INK }}>To pay</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: INK }}>Total</span>
               <span style={{ fontFamily: "Anton", fontSize: 24, color: INK, fontVariantNumeric: "tabular-nums" }}>{paiseToMoney(props.grand)}</span>
             </div>
-            <div style={{ marginTop: 8, fontSize: 11, color: MUTED, background: "#FFF9D6", border: "1px solid #F2E7A0", borderRadius: 9, padding: "7px 9px" }}>Pay <b style={{ color: INK }}>{paiseToMoney(props.deposit)}</b> now to lock the slot · balance at the ground.</div>
           </div>
+
+          <MiniLabel style={{ marginTop: 20 }}>Paying now</MiniLabel>
+          <div style={{ display: "flex", gap: 9 }}>
+            {([
+              { id: "deposit", title: "Pay deposit", amount: props.deposit, note: "rest at the ground" },
+              { id: "full", title: "Pay full", amount: props.grand, note: "nothing due later" },
+            ] as const).map((m) => {
+              const sel = m.id === props.payMode;
+              return (
+                <button key={m.id} onClick={() => props.setPayMode(m.id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3, padding: "13px 14px", borderRadius: 14, background: sel ? INK : "#fff", border: sel ? `1px solid ${INK}` : `1px solid ${LINE}`, color: sel ? "#fff" : INK, textAlign: "left" }}>
+                  <span style={{ fontSize: 12, fontWeight: 800 }}>{m.title}</span>
+                  <span style={{ fontFamily: "Anton", fontSize: 20, fontVariantNumeric: "tabular-nums" }}>{paiseToMoney(m.amount)}</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: sel ? "#9a988a" : MUTED }}>{m.note}</span>
+                </button>
+              );
+            })}
+          </div>
+          {props.payMode === "deposit" && (
+            <div style={{ marginTop: 8, fontSize: 11, color: MUTED, background: "#FFF9D6", border: "1px solid #F2E7A0", borderRadius: 9, padding: "7px 9px" }}>Pay <b style={{ color: INK }}>{paiseToMoney(props.deposit)}</b> now to lock the slot · balance of <b style={{ color: INK }}>{paiseToMoney(props.grand - props.deposit)}</b> in cash at the ground or later in the app.</div>
+          )}
 
           <MiniLabel style={{ marginTop: 20 }}>Pay with</MiniLabel>
           <div style={{ display: "flex", gap: 9 }}>
@@ -949,7 +1057,7 @@ function Checkout(props: {
         </div>
       </div>
       <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 30, padding: "14px 18px 22px", background: "linear-gradient(#F4F4EE00,#F4F4EE 26%)" }}>
-        <button onClick={props.payNow} style={{ width: "100%", height: 56, borderRadius: 15, background: YELLOW, color: INK, fontSize: 16, fontWeight: 900, boxShadow: "0 14px 26px -10px rgba(255,212,0,.7)" }}>Pay {paiseToMoney(props.deposit)} →</button>
+        <button onClick={props.payNow} style={{ width: "100%", height: 56, borderRadius: 15, background: YELLOW, color: INK, fontSize: 16, fontWeight: 900, boxShadow: "0 14px 26px -10px rgba(255,212,0,.7)" }}>Pay {paiseToMoney(payingNow)} →</button>
       </div>
     </>
   );
@@ -1160,7 +1268,7 @@ function RescheduleSheet(props: { booking: BookingView; dates: string[]; toast: 
   );
 }
 
-function Detail(props: { booking: BookingView; dates: string[]; venueName: string; locality: string; toast: (m: string) => void; refresh: () => void; back: () => void; cancel: () => void; rebook: () => void }) {
+function Detail(props: { booking: BookingView; dates: string[]; venueName: string; locality: string; toast: (m: string) => void; refresh: () => void; back: () => void; cancel: () => void; payBalance: () => void; rebook: () => void }) {
   const b = props.booking;
   const first = b.slots[0];
   const upcoming = !b.past && b.status !== "CANCELLED";
@@ -1223,6 +1331,9 @@ function Detail(props: { booking: BookingView; dates: string[]; venueName: strin
       <div style={{ padding: "12px 20px 0", display: "flex", flexDirection: "column", gap: 9 }}>
         {upcoming && (
           <>
+            {b.status === "CONFIRMED" && b.amountDuePaise > 0 && (
+              <button onClick={props.payBalance} style={{ height: 52, borderRadius: 14, background: YELLOW, color: INK, fontSize: 14.5, fontWeight: 900, boxShadow: "0 14px 26px -10px rgba(255,212,0,.7)" }}>Pay balance {paiseToMoney(b.amountDuePaise)} →</button>
+            )}
             <div style={{ display: "flex", gap: 9 }}>
               <button onClick={onReschedClick} style={{ flex: 1, height: 50, borderRadius: 14, background: INK, color: "#fff", fontSize: 13.5, fontWeight: 800 }}>↻ Reschedule</button>
               <button onClick={props.cancel} style={{ flex: 1, height: 50, borderRadius: 14, background: "#FCE9E5", color: "#E5533C", fontSize: 13.5, fontWeight: 800, border: "1px solid #F4C9BF" }}>Cancel booking</button>
